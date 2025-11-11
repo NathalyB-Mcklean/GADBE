@@ -5,16 +5,17 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
+    types: [opened, synchronize, reopened]
 
 jobs:
-  sonarcloud:
+  build:
     name: SonarCloud
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # recomendado por SonarCloud
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
