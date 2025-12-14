@@ -63,7 +63,7 @@ class AuthController {
 
         // Verificar si la cuenta está bloqueada
         if ($this->estaBloqueada($usuario)) {
-            $minutos = $this->minutosRestantesBloq ueo($usuario['bloqueado_hasta']);
+            $minutos = $this->minutosRestantesBloqueo($usuario['bloqueado_hasta']);
             Response::error("Cuenta bloqueada por $minutos minutos. Intente más tarde.");
         }
 
