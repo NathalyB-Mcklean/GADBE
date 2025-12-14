@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Bienestar Estudiantil - UTP</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .loader {
+      text-align: center;
+      color: white;
+    }
+
+    .loader i {
+      font-size: 4rem;
+      animation: spin 1s linear infinite;
+    }
+
+    .loader h2 {
+      margin-top: 1rem;
+      font-size: 1.5rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader">
+    <i class="fas fa-spinner"></i>
+    <h2>Cargando Sistema de Bienestar Estudiantil...</h2>
+    <p>Universidad Tecnológica de Panamá</p>
+  </div>
+
+  <script>
+    // Verificar si hay sesión activa
+    async function verificarSesion() {
+      try {
+        const response = await fetch('../backend/auth.php?action=verificar_sesion');
+        const data = await response.json();
+        
+        if (data.authenticated) {
+          // Si hay sesión activa, redirigir al dashboard
+          window.location.href = 'dashboard.html';
+        } else {
+          // Si no hay sesión, redirigir al login
+          window.location.href = 'login.html';
+        }
+      } catch (error) {
+        console.error('Error al verificar sesión:', error);
+        // En caso de error, redirigir al login
+        window.location.href = 'login.html';
+      }
+    }
+
+    // Ejecutar verificación al cargar
+    window.addEventListener('load', verificarSesion);
+  </script>
+</body>
+</html>
