@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Bienestar Estudiantil - UTP</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      color: #333;
+    }
+
+    /* Login Screen */
+    .login-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .login-box {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 3rem;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 450px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-header h1 {
+      color: #4c51bf;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .login-header p {
+      color: #718096;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      color: #4a5568;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.8rem;
+      border: 2px solid rgba(102, 126, 234, 0.2);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      width: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      background: #fc8181;
+      color: white;
+      padding: 0.8rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    .success-message {
+      background: #48bb78;
+      color: white;
+      padding: 0.8rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #718096;
+    }
+
+    .login-footer a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Main App */
+    #app {
+      display: none;
+      width: 100%;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+      padding: 2rem 0;
+      position: fixed;
+      height: 100vh;
+      left: -280px;
+      transition: left 0.3s ease;
+      z-index: 1000;
+    }
+
+    .sidebar.active {
+      left: 0;
+    }
+
+    .sidebar-header {
+      padding: 0 1.5rem 2rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+    }
+
+    .sidebar-header h3 {
+      color: #4c51bf;
+      font-size: 1.2rem;
+    }
+
+    .role-badge {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      display: inline-block;
+      margin-top: 0.5rem;
+    }
+
+    .sidebar button {
+      width: 100%;
+      background: none;
+      border: none;
+      text-align: left;
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: #4a5568;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .sidebar button:hover, .sidebar button.active {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      transform: translateX(5px);
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 0;
+      transition: margin-left 0.3s ease;
+    }
+
+    header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      color: #4a5568;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+    }
+
+    .hamburger {
+      font-size: 1.5rem;
+      cursor: pointer;
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 0.8rem;
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-container {
+      flex: 1;
+      max-width: 600px;
+    }
+
+    .search-bar {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 0.8rem 1rem 0.8rem 3rem;
+      border: 2px solid rgba(102, 126, 234, 0.2);
+      border-radius: 25px;
+      background: rgba(255, 255, 255, 0.9);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .search-bar input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .search-bar i {
+      position: absolute;
+      left: 1.2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #a0aec0;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-info span {
+      color: #4a5568;
+    }
+
+    .btn-logout {
+      background: #fc8181;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-logout:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(252, 129, 129, 0.4);
+    }
+
+    main {
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .welcome-section {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .welcome-section h1 {
+      color: #4c51bf;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    .section-card.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-card h2 {
+      color: #4c51bf;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .table-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      margin-top: 1.5rem;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    th {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+      color: #4a5568;
+    }
+
+    tr:hover {
+      background: rgba(102, 126, 234, 0.05);
+    }
+
+    .badge {
+      padding: 0.3rem 0.8rem;
+      border-radius: 15px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .badge-servicio {
+      background: #bee3f8;
+      color: #2c5282;
+    }
+
+    .badge-oferta {
+      background: #feebc8;
+      color: #7c2d12;
+    }
+
+    .badge-activo {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .badge-pendiente {
+      background: #feebc8;
+      color: #7c2d12;
+    }
+
+    .badge-confirmada {
+      background: #bee3f8;
+      color: #2c5282;
+    }
+
+    .badge-cancelada {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #a0aec0;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 2rem;
+      color: #a0aec0;
+      font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        left: -100%;
+      }
+
+      header {
+        padding: 1rem;
+      }
+
+      main {
+        padding: 1rem;
+      }
+
+      .search-container {
+        max-width: 100%;
+      }
+
+      .user-info {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Pantalla de Login -->
+  <div class="login-container" id="loginScreen">
+    <div class="login-box">
+      <div class="login-header">
+        <h1><i class="fas fa-graduation-cap"></i> Bienestar Estudiantil</h1>
+        <p>Universidad Tecnológica de Panamá</p>
+      </div>
+
+      <div class="error-message" id="loginError"></div>
+      <div class="success-message" id="loginSuccess"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Correo Institucional</label>
+          <input type="email" id="loginEmail" placeholder="usuario@utp.ac.pa" required>
+        </div>
+
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn" id="loginBtn">
+          <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p>¿No tienes cuenta? <a href="#" onclick="mostrarRegistro(); return false;">Regístrate aquí</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aplicación Principal -->
+  <div id="app">
+    <div class="sidebar-overlay" id="overlay" onclick="toggleMenu()"></div>
+    
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h3>Menú Principal</h3>
+        <div class="role-badge" id="rolBadge"></div>
+      </div>
+      <div id="menuItems"></div>
+    </div>
+
+    <div class="main-content">
+      <header>
+        <div class="header-left">
+          <button class="hamburger" onclick="toggleMenu()">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="search-container">
+            <div class="search-bar">
+              <i class="fas fa-search"></i>
+              <input type="text" id="searchInput" placeholder="Buscar servicios..." oninput="buscarServicios()">
+            </div>
+          </div>
+        </div>
+        <div class="user-info">
+          <span id="userName"></span>
+          <button class="btn-logout" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Salir
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <div class="welcome-section">
+          <h1 id="welcomeTitle"></h1>
+          <p id="welcomeDesc"></p>
+        </div>
+
+        <!-- Servicios -->
+        <section class="section-card active" id="seccionServicios">
+          <h2><i class="fas fa-list"></i> Servicios y Ofertas Disponibles</h2>
+          <div class="table-container">
+            <table id="tablaServicios">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Trabajador Social</th>
+                  <th>Fecha Límite</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" class="loading">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Gestionar Servicios -->
+        <section class="section-card" id="seccionGestionServicios">
+          <h2><i class="fas fa-cogs"></i> Gestionar Servicios y Ofertas</h2>
+          <div class="error-message" id="errorServicio"></div>
+          <div class="success-message" id="successServicio"></div>
+          
+          <form id="formServicio">
+            <div class="form-group">
+              <label>Tipo *</label>
+              <select id="tipoServicio" required>
+                <option value="">Seleccione</option>
+                <option value="Servicio">Servicio</option>
+                <option value="Oferta">Oferta</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Categoría *</label>
+              <select id="categoriaServicio" required></select>
+            </div>
+
+            <div class="form-group">
+              <label>Nombre *</label>
+              <input type="text" id="nombreServicio" required>
+            </div>
+
+            <div class="form-group">
+              <label>Descripción *</label>
+              <textarea id="descripcionServicio" rows="4" required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Ubicación</label>
+              <input type="text" id="ubicacionServicio" placeholder="Edificio, Piso, Oficina">
+            </div>
+
+            <div class="form-group">
+              <label>Fecha Límite</label>
+              <input type="date" id="fechaLimiteServicio">
+            </div>
+
+            <div class="form-group">
+              <label>Duración</label>
+              <input type="text" id="duracionServicio" placeholder="Ej: 1 hora, Semestral">
+            </div>
+
+            <button type="submit" class="btn">
+              <i class="fas fa-save"></i> Guardar Servicio/Oferta
+            </button>
+          </form>
+
+          <div class="table-container" style="margin-top: 2rem;">
+            <h3 style="padding: 1rem; color: #4c51bf;">Servicios Creados</h3>
+            <table id="tablaMisServicios">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" class="loading">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Programar Citas -->
+        <section class="section-card" id="seccionCitas">
+          <h2><i class="fas fa-calendar-alt"></i> Programar Cita</h2>
+          <div class="error-message" id="errorCita"></div>
+          <div class="success-message" id="successCita"></div>
+          
+          <form id="formCita">
+            <div class="form-group">
+              <label>Servicio *</label>
+              <select id="servicioCita" required></select>
+            </div>
+
+            <div class="form-group">
+              <label>Fecha *</label>
+              <input type="date" id="fechaCita" required>
+            </div>
+
+            <div class="form-group">
+              <label>Hora *</label>
+              <select id="horaCita" required>
+                <option value="">Seleccione hora</option>
+                <option value="08:00">08:00 AM</option>
+                <option value="09:00">09:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="14:00">02:00 PM</option>
+                <option value="15:00">03:00 PM</option>
+                <option value="16:00">04:00 PM</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Motivo</label>
+              <textarea id="motivoCita" rows="3"></textarea>
+            </div>
+
+            <button type="submit" class="btn">
+              <i class="fas fa-calendar-check"></i> Programar Cita
+            </button>
+          </form>
+
+          <div class="table-container" style="margin-top: 2rem;">
+            <h3 style="padding: 1rem; color: #4c51bf;">Mis Citas</h3>
+            <table id="tablaCitas">
+              <thead>
+                <tr>
+                  <th>Servicio</th>
+                  <th>Fecha</th>
+                  <th>Hora</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" class="loading">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Evaluaciones -->
+        <section class="section-card" id="seccionEvaluaciones">
+          <h2><i class="fas fa-poll"></i> Evaluación de Satisfacción</h2>
+          <div class="error-message" id="errorEval"></div>
+          <div class="success-message" id="successEval"></div>
+          
+          <form id="formEvaluacion">
+            <div class="form-group">
+              <label>Calificación *</label>
+              <select id="calificacionEval" required>
+                <option value="">Seleccione</option>
+                <option value="Excelente">⭐⭐⭐⭐⭐ Excelente</option>
+                <option value="Bueno">⭐⭐⭐⭐ Bueno</option>
+                <option value="Regular">⭐⭐⭐ Regular</option>
+                <option value="Malo">⭐⭐ Malo</option>
+                <option value="Muy Malo">⭐ Muy Malo</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Servicio (opcional)</label>
+              <select id="servicioEval"></select>
+            </div>
+
+            <div class="form-group">
+              <label>Comentarios</label>
+              <textarea id="comentarioEval" rows="4"></textarea>
+            </div>
+
+            <button type="submit" class="btn">
+              <i class="fas fa-paper-plane"></i> Enviar Evaluación
+            </button>
+          </form>
+        </section>
+
+        <!-- Resultados Evaluaciones (Trabajadora Social) -->
+        <section class="section-card" id="seccionResultados">
+          <h2><i class="fas fa-chart-bar"></i> Resultados de Evaluaciones</h2>
+          <div id="estadisticasEval" class="loading">Cargando estadísticas...</div>
+          <div class="table-container" style="margin-top: 2rem;">
+            <table id="tablaEvaluaciones">
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  <th>Servicio</th>
+                  <th>Calificación</th>
+                  <th>Comentario</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" class="loading">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'api.php';
+    let currentUser = null;
+    let currentSection = 'seccionServicios';
+
+    // ============ UTILIDADES ============
+    function mostrarError(elementId, mensaje) {
+      const el = document.getElementById(elementId);
+      el.textContent = mensaje;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    function mostrarExito(elementId, mensaje) {
+      const el = document.getElementById(elementId);
+      el.textContent = mensaje;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    async function apiCall(action, data = {}) {
+      try {
+        const response = await fetch(`${API_URL}?action=${action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Error API:', error);
+        return { success: false, message: 'Error de conexión' };
+      }
+    }
+
+    // ============ AUTENTICACIÓN ============
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando...';
+      
+      const result = await apiCall('login', { correo: email, password });
+      
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
+      
+      if (result.success) {
+        currentUser = result.usuario;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        inicializarApp();
+      } else {
+        mostrarError('loginError', result.message);
+      }
+    });
+
+    async function logout() {
+      await apiCall('logout');
+      location.reload();
+    }
+
+    function mostrarRegistro() {
+      const nombre = prompt('Ingrese su nombre completo:');
+      if (!nombre) return;
+      
+      const correo = prompt('Ingrese su correo institucional (@utp.ac.pa):');
+      if (!correo) return;
+      
+      const password = prompt('Ingrese su contraseña (mínimo 8 caracteres):');
+      if (!password) return;
+      
+      const password2 = prompt('Confirme su contraseña:');
+      if (password !== password2) {
+        alert('Las contraseñas no coinciden');
+        return;
+      }
+      
+      apiCall('registrar', { nombre, correo, password }).then(result => {
+        if (result.success) {
+          mostrarExito('loginSuccess', result.message);
+        } else {
+          mostrarError('loginError', result.message);
+        }
+      });
+    }
+
+    // ============ INICIALIZACIÓN ============
+    async function inicializarApp() {
+      document.getElementById('userName').textContent = currentUser.nombre;
+      document.getElementById('rolBadge').textContent = currentUser.rol;
+      document.getElementById('welcomeTitle').textContent = `Bienvenido, ${currentUser.nombre}`;
+      document.getElementById('welcomeDesc').textContent = 
+        currentUser.rol === 'Estudiante' ? 'Gestiona tus servicios de bienestar' : 'Administra servicios y solicitudes';
+      
+      renderMenu();
+      cargarCategorias();
+      cargarServicios();
+      
+      if (currentUser.rol === 'Estudiante') {
+        cargarServiciosParaCitas();
+        cargarServiciosParaEval();
+        cargarCitas();
+      } else {
+        cargarMisServicios();
+        cargarEvaluaciones();
+        cargarEstadisticas();
+      }
+      
+      // Fecha mínima para citas
+      document.getElementById('fechaCita').min = new Date().toISOString().split('T')[0];
+    }
+
+    function renderMenu() {
+      const menu = document.getElementById('menuItems');
+      menu.innerHTML = '';
+      
+      const items = [
+        { id: 'seccionServicios', icon: 'list', text: 'Servicios Disponibles', roles: ['Estudiante', 'Trabajadora Social', 'Administrador'] }
+      ];
+      
+      if (currentUser.rol === 'Estudiante') {
+        items.push(
+          { id: 'seccionCitas', icon: 'calendar-alt', text: 'Mis Citas', roles: ['Estudiante'] },
+          { id: 'seccionEvaluaciones', icon: 'poll', text: 'Evaluar Servicios', roles: ['Estudiante'] }
+        );
+      } else {
+        items.push(
+          { id: 'seccionGestionServicios', icon: 'cogs', text: 'Gestionar Servicios', roles: ['Trabajadora Social', 'Administrador'] },
+          { id: 'seccionResultados', icon: 'chart-bar', text: 'Ver Resultados', roles: ['Trabajadora Social', 'Administrador'] }
+        );
+      }
+
+      items.forEach(item => {
+        if (item.roles.includes(currentUser.rol)) {
+          const btn = document.createElement('button');
+          btn.innerHTML = `<i class="fas fa-${item.icon}"></i> ${item.text}`;
+          btn.onclick = () => mostrarSeccion(item.id);
+          if (item.id === currentSection) btn.classList.add('active');
+          menu.appendChild(btn);
+        }
+      });
+    }
+
+    function mostrarSeccion(id) {
+      document.querySelectorAll('.section-card').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      currentSection = id;
+      renderMenu();
+      if (window.innerWidth <= 768) toggleMenu();
+    }
+
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+
+    // ============ SERVICIOS ============
+    async function cargarCategorias() {
+      const result = await apiCall('listar_categorias');
+      if (result.success) {
+        const selects = [document.getElementById('categoriaServicio'), document.getElementById('servicioEval')];
+        selects.forEach(select => {
+          if (select) {
+            select.innerHTML = '<option value="">Seleccione</option>';
+            result.categorias.forEach(cat => {
+              select.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+            });
+          }
+        });
+      }
+    }
+
+    async function cargarServicios() {
+      const busqueda = document.getElementById('searchInput').value;
+      const result = await apiCall('listar_servicios', { busqueda });
+      
+      const tbody = document.querySelector('#tablaServicios tbody');
+      if (result.success && result.servicios.length > 0) {
+        tbody.innerHTML = result.servicios.map(s => `
+          <tr>
+            <td><span class="badge badge-${s.tipo.toLowerCase()}">${s.tipo}</span></td>
+            <td><strong>${s.nombre}</strong></td>
+            <td>${s.categoria}</td>
+            <td>${s.trabajador}</td>
+            <td>${s.fecha_limite || '—'}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No se encontraron servicios</td></tr>';
+      }
+    }
+
+    function buscarServicios() {
+      cargarServicios();
+    }
+
+    document.getElementById('formServicio').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        tipo: document.getElementById('tipoServicio').value,
+        categoria_id: document.getElementById('categoriaServicio').value,
+        nombre: document.getElementById('nombreServicio').value,
+        descripcion: document.getElementById('descripcionServicio').value,
+        ubicacion: document.getElementById('ubicacionServicio').value,
+        fecha_limite: document.getElementById('fechaLimiteServicio').value,
+        duracion: document.getElementById('duracionServicio').value
+      };
+      
+      const result = await apiCall('crear_servicio', data);
+      
+      if (result.success) {
+        mostrarExito('successServicio', result.message);
+        e.target.reset();
+        cargarMisServicios();
+        cargarServicios();
+      } else {
+        mostrarError('errorServicio', result.message);
+      }
+    });
+
+    async function cargarMisServicios() {
+      const result = await apiCall('listar_servicios');
+      const tbody = document.querySelector('#tablaMisServicios tbody');
+      
+      if (result.success && result.servicios.length > 0) {
+        tbody.innerHTML = result.servicios.map(s => `
+          <tr>
+            <td>${s.nombre}</td>
+            <td><span class="badge badge-${s.tipo.toLowerCase()}">${s.tipo}</span></td>
+            <td><span class="badge badge-activo">${s.estado}</span></td>
+            <td>
+              <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #fc8181;" 
+                      onclick="eliminarServicio(${s.id})">
+                <i class="fas fa-trash"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">No hay servicios creados</td></tr>';
+      }
+    }
+
+    async function eliminarServicio(id) {
+      if (!confirm('¿Está seguro de eliminar este servicio?')) return;
+      
+      const result = await apiCall('eliminar_servicio', { id });
+      if (result.success) {
+        mostrarExito('successServicio', result.message);
+        cargarMisServicios();
+        cargarServicios();
+      } else {
+        mostrarError('errorServicio', result.message);
+      }
+    }
+
+    // ============ CITAS ============
+    async function cargarServiciosParaCitas() {
+      const result = await apiCall('listar_servicios', { estado: 'activo' });
+      const select = document.getElementById('servicioCita');
+      
+      if (result.success) {
+        select.innerHTML = '<option value="">Seleccione servicio</option>';
+        result.servicios.forEach(s => {
+          select.innerHTML += `<option value="${s.id}">${s.nombre} - ${s.categoria}</option>`;
+        });
+      }
+    }
+
+    async function cargarServiciosParaEval() {
+      const result = await apiCall('listar_servicios');
+      const select = document.getElementById('servicioEval');
+      
+      if (result.success) {
+        select.innerHTML = '<option value="">General</option>';
+        result.servicios.forEach(s => {
+          select.innerHTML += `<option value="${s.id}">${s.nombre}</option>`;
+        });
+      }
+    }
+
+    document.getElementById('formCita').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        servicio_id: document.getElementById('servicioCita').value,
+        fecha: document.getElementById('fechaCita').value,
+        hora: document.getElementById('horaCita').value,
+        motivo: document.getElementById('motivoCita').value
+      };
+      
+      const result = await apiCall('crear_cita', data);
+      
+      if (result.success) {
+        mostrarExito('successCita', result.message);
+        e.target.reset();
+        cargarCitas();
+      } else {
+        mostrarError('errorCita', result.message);
+      }
+    });
+
+    async function cargarCitas() {
+      const result = await apiCall('listar_citas');
+      const tbody = document.querySelector('#tablaCitas tbody');
+      
+      if (result.success && result.citas.length > 0) {
+        tbody.innerHTML = result.citas.map(c => `
+          <tr>
+            <td>${c.servicio}</td>
+            <td>${c.fecha}</td>
+            <td>${c.hora}</td>
+            <td><span class="badge badge-${c.estado}">${c.estado}</span></td>
+            <td>
+              ${c.estado === 'pendiente' ? `
+                <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #fc8181;" 
+                        onclick="cancelarCita(${c.id})">
+                  <i class="fas fa-times"></i> Cancelar
+                </button>
+              ` : '—'}
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No tienes citas programadas</td></tr>';
+      }
+    }
+
+    async function cancelarCita(id) {
+      if (!confirm('¿Está seguro de cancelar esta cita?')) return;
+      
+      const result = await apiCall('cancelar_cita', { id });
+      if (result.success) {
+        mostrarExito('successCita', result.message);
+        cargarCitas();
+      } else {
+        mostrarError('errorCita', result.message);
+      }
+    }
+
+    // ============ EVALUACIONES ============
+    document.getElementById('formEvaluacion').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        calificacion: document.getElementById('calificacionEval').value,
+        servicio_id: document.getElementById('servicioEval').value || null,
+        comentario: document.getElementById('comentarioEval').value
+      };
+      
+      const result = await apiCall('crear_evaluacion', data);
+      
+      if (result.success) {
+        mostrarExito('successEval', '✅ Evaluación enviada. Gracias por tu retroalimentación.');
+        e.target.reset();
+      } else {
+        mostrarError('errorEval', result.message);
+      }
+    });
+
+    async function cargarEvaluaciones() {
+      const result = await apiCall('listar_evaluaciones');
+      const tbody = document.querySelector('#tablaEvaluaciones tbody');
+      
+      if (result.success && result.evaluaciones.length > 0) {
+        tbody.innerHTML = result.evaluaciones.map(e => `
+          <tr>
+            <td>${e.estudiante}</td>
+            <td>${e.servicio || 'General'}</td>
+            <td>${e.calificacion}</td>
+            <td>${e.comentario || '—'}</td>
+            <td>${new Date(e.fecha_evaluacion).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No hay evaluaciones registradas</td></tr>';
+      }
+    }
+
+    async function cargarEstadisticas() {
+      const result = await apiCall('estadisticas_evaluaciones');
+      const div = document.getElementById('estadisticasEval');
+      
+      if (result.success) {
+        const stats = result.estadisticas;
+        div.innerHTML = `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+              <h3 style="font-size: 2rem; margin-bottom: 0.5rem;">${stats.total}</h3>
+              <p>Total Evaluaciones</p>
+            </div>
+            <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+              <h3 style="font-size: 2rem; margin-bottom: 0.5rem;">${stats.promedio}</h3>
+              <p>Promedio General</p>
+            </div>
+            <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 15px; text-align: center;">
+              <h3 style="font-size: 2rem; margin-bottom: 0.5rem;">${stats.servicios}</h3>
+              <p>Servicios Evaluados</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Verificar sesión al cargar
+    window.addEventListener('load', async () => {
+      const result = await apiCall('verificar_sesion');
+      if (result.authenticated) {
+        currentUser = result.usuario;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        inicializarApp();
+      }
+    });
+  </script>
+</body>
+</html>
