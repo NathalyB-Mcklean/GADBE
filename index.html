@@ -486,6 +486,64 @@
         align-items: flex-end;
         gap: 0.5rem;
       }
+
+      /* Estilos para la vista de agenda */
+.dia-agenda {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 150px;
+}
+
+.cita-item {
+    background: #c6f6d5;
+    border-radius: 4px;
+    padding: 5px;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+/* Estilos para el dropzone de archivos */
+#dropzone.dragover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #667eea;
+}
+
+/* Estilos para tarjetas de estadísticas */
+.tarjeta-estadistica {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Nuevos badges para estados de solicitud */
+.badge-borrador {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.badge-pendiente {
+    background: #feebc8;
+    color: #7c2d12;
+}
+
+.badge-en_revision {
+    background: #bee3f8;
+    color: #2c5282;
+}
+
+.badge-aprobada {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.badge-rechazada {
+    background: #fed7d7;
+    color: #742a2a;
+}
     }
   </style>
 </head>
@@ -768,6 +826,396 @@
             </table>
           </div>
         </section>
+
+
+        <!-- ============ MI AGENDA (Trabajadora Social) ============ -->
+<section class="section-card" id="seccionAgenda">
+    <h2><i class="fas fa-calendar"></i> Mi Agenda</h2>
+    <div class="error-message" id="errorAgenda"></div>
+    <div class="success-message" id="successAgenda"></div>
+    
+    <!-- Controles de fecha -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; margin-bottom: 2rem;">
+        <div class="form-group">
+            <label>Fecha Inicio</label>
+            <input type="date" id="fechaInicioAgenda" value="<?= date('Y-m-d') ?>">
+        </div>
+        <div class="form-group">
+            <label>Fecha Fin</label>
+            <input type="date" id="fechaFinAgenda" value="<?= date('Y-m-d', strtotime('+7 days')) ?>">
+        </div>
+        <div style="align-self: end;">
+            <button class="btn" onclick="cargarAgenda()">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
+    </div>
+    
+    <!-- Vista de agenda -->
+    <div id="vistaAgenda" class="loading">Cargando agenda...</div>
+    
+    <!-- Gestión de horarios -->
+    <h3 style="margin-top: 2rem; border-top: 2px solid #667eea; padding-top: 1rem;">
+        <i class="fas fa-clock"></i> Gestionar Horarios
+    </h3>
+    
+    <form id="formHorario" style="margin-top: 1rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Día de la semana *</label>
+                <select id="diaSemanaHorario" required>
+                    <option value="">Seleccione</option>
+                    <option value="Lunes">Lunes</option>
+                    <option value="Martes">Martes</option>
+                    <option value="Miércoles">Miércoles</option>
+                    <option value="Jueves">Jueves</option>
+                    <option value="Viernes">Viernes</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Hora Inicio *</label>
+                <input type="time" id="horaInicioHorario" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Hora Fin *</label>
+                <input type="time" id="horaFinHorario" required>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn" style="margin-top: 1rem;">
+            <i class="fas fa-plus"></i> Agregar Horario
+        </button>
+    </form>
+    
+    <!-- Lista de horarios configurados -->
+    <div class="table-container" style="margin-top: 2rem;">
+        <h3>Horarios Configurados</h3>
+        <table id="tablaHorarios">
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th>Hora Inicio</th>
+                    <th>Hora Fin</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="4" class="loading">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Bloqueo de horarios -->
+    <h3 style="margin-top: 2rem; border-top: 2px solid #667eea; padding-top: 1rem;">
+        <i class="fas fa-ban"></i> Bloquear Horarios (Vacaciones/Ausencias)
+    </h3>
+    
+    <form id="formBloqueo" style="margin-top: 1rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Fecha Inicio *</label>
+                <input type="date" id="fechaInicioBloqueo" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Fecha Fin *</label>
+                <input type="date" id="fechaFinBloqueo" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Motivo *</label>
+                <select id="motivoBloqueo" required>
+                    <option value="">Seleccione</option>
+                    <option value="vacaciones">Vacaciones</option>
+                    <option value="ausencia">Ausencia</option>
+                    <option value="capacitacion">Capacitación</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" id="descripcionBloqueo" placeholder="Opcional">
+            </div>
+        </div>
+        
+        <button type="submit" class="btn" style="margin-top: 1rem; background: #fc8181;">
+            <i class="fas fa-ban"></i> Bloquear Horarios
+        </button>
+    </form>
+</section>
+
+<!-- ============ SOLICITAR SERVICIOS (Estudiante) ============ -->
+<section class="section-card" id="seccionSolicitarServicios">
+    <h2><i class="fas fa-file-alt"></i> Solicitar Servicios</h2>
+    <div class="error-message" id="errorSolicitud"></div>
+    <div class="success-message" id="successSolicitud"></div>
+    
+    <form id="formSolicitud">
+        <div class="form-group">
+            <label>Tipo de Solicitud *</label>
+            <select id="tipoSolicitud" required onchange="cargarServiciosSolicitud()">
+                <option value="">Seleccione</option>
+                <option value="beca_alimenticia">Beca Alimenticia</option>
+                <option value="apoyo_economico">Apoyo Económico</option>
+                <option value="permiso_especial">Permiso Especial</option>
+                <option value="materiales">Materiales</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Servicio Relacionado *</label>
+            <select id="servicioSolicitud" required>
+                <option value="">Primero seleccione tipo</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Motivo de la Solicitud *</label>
+            <textarea id="motivoSolicitud" rows="4" required placeholder="Describa detalladamente el motivo de su solicitud..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Documentos Adjuntos</label>
+            <div id="dropzone" style="border: 2px dashed #667eea; border-radius: 10px; padding: 2rem; text-align: center; background: rgba(102, 126, 234, 0.05);">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                <p>Arrastre y suelte archivos aquí o haga clic para seleccionar</p>
+                <p style="font-size: 0.9rem; color: #718096;">Formatos permitidos: PDF, JPG, PNG (Máx. 5MB cada uno)</p>
+                <input type="file" id="documentosSolicitud" multiple accept=".pdf,.jpg,.png" style="display: none;" onchange="mostrarArchivos()">
+                <button type="button" class="btn" style="margin-top: 1rem;" onclick="document.getElementById('documentosSolicitud').click()">
+                    <i class="fas fa-folder-open"></i> Seleccionar Archivos
+                </button>
+            </div>
+            <div id="listaArchivos" style="margin-top: 1rem;"></div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn">
+                <i class="fas fa-paper-plane"></i> Enviar Solicitud
+            </button>
+            <button type="button" class="btn" style="background: #a0aec0;" onclick="guardarBorrador()">
+                <i class="fas fa-save"></i> Guardar Borrador
+            </button>
+            <button type="button" class="btn" style="background: #fc8181;" onclick="limpiarFormSolicitud()">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    </form>
+    
+    <!-- Historial de solicitudes -->
+    <div class="table-container" style="margin-top: 3rem;">
+        <h3><i class="fas fa-history"></i> Mis Solicitudes</h3>
+        <table id="tablaSolicitudes">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Comentarios</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="5" class="loading">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ============ GESTIÓN DE SOLICITUDES (Trabajadora Social) ============ -->
+<section class="section-card" id="seccionGestionSolicitudes">
+    <h2><i class="fas fa-tasks"></i> Gestión de Solicitudes</h2>
+    
+    <!-- Filtros -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="form-group">
+            <label>Estado</label>
+            <select id="filtroEstadoSolicitud" onchange="filtrarSolicitudes()">
+                <option value="">Todos</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="en_revision">En Revisión</option>
+                <option value="aprobada">Aprobada</option>
+                <option value="rechazada">Rechazada</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Tipo</label>
+            <select id="filtroTipoSolicitud" onchange="filtrarSolicitudes()">
+                <option value="">Todos</option>
+                <option value="beca_alimenticia">Beca Alimenticia</option>
+                <option value="apoyo_economico">Apoyo Económico</option>
+                <option value="permiso_especial">Permiso Especial</option>
+                <option value="materiales">Materiales</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Fecha Desde</label>
+            <input type="date" id="filtroFechaDesde" onchange="filtrarSolicitudes()">
+        </div>
+        
+        <div class="form-group">
+            <label>Fecha Hasta</label>
+            <input type="date" id="filtroFechaHasta" onchange="filtrarSolicitudes()">
+        </div>
+    </div>
+    
+    <div class="error-message" id="errorGestionSolicitud"></div>
+    <div class="success-message" id="successGestionSolicitud"></div>
+    
+    <!-- Tabla de solicitudes -->
+    <div class="table-container">
+        <table id="tablaGestionSolicitudes">
+            <thead>
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="6" class="loading">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ============ ESTADÍSTICAS (Trabajadora Social/Admin) ============ -->
+<section class="section-card" id="seccionEstadisticas">
+    <h2><i class="fas fa-chart-bar"></i> Estadísticas y Reportes</h2>
+    
+    <!-- Filtros para reporte -->
+    <div class="form-container" style="background: rgba(102, 126, 234, 0.05); padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
+        <h3 style="color: #4c51bf; margin-bottom: 1rem;">Configurar Reporte</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Rango de Fechas *</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="date" id="fechaInicioEstadisticas" style="flex: 1;" value="<?= date('Y-m-01') ?>">
+                    <span style="align-self: center;">a</span>
+                    <input type="date" id="fechaFinEstadisticas" style="flex: 1;" value="<?= date('Y-m-t') ?>">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Categoría</label>
+                <select id="categoriaEstadisticas">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Servicio</label>
+                <select id="servicioEstadisticas">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Trabajadora Social</label>
+                <select id="trabajadorEstadisticas">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button class="btn" onclick="generarEstadisticas()">
+                <i class="fas fa-chart-line"></i> Generar Reporte
+            </button>
+            <button class="btn" style="background: #e53e3e;" onclick="exportarPDF()">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+            <button class="btn" style="background: #38a169;" onclick="exportarExcel()">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+        </div>
+    </div>
+    
+    <!-- Resultados de estadísticas -->
+    <div id="resultadosEstadisticas" class="loading">
+        Seleccione filtros y genere el reporte...
+    </div>
+</section>
+
+<!-- ============ ADMINISTRACIÓN DE ROLES (Admin) ============ -->
+<section class="section-card" id="seccionAdministracionRoles">
+    <h2><i class="fas fa-user-shield"></i> Administración de Roles y Permisos</h2>
+    
+    <!-- Asignar roles a usuarios -->
+    <div class="form-container" style="background: rgba(102, 126, 234, 0.05); padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
+        <h3 style="color: #4c51bf; margin-bottom: 1rem;">Asignar Rol a Usuario</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+                <label>Usuario *</label>
+                <select id="usuarioAsignarRol" required>
+                    <option value="">Seleccione usuario</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Rol *</label>
+                <select id="rolAsignar" required>
+                    <option value="">Seleccione rol</option>
+                    <option value="Estudiante">Estudiante</option>
+                    <option value="Trabajadora Social">Trabajadora Social</option>
+                    <option value="Administrador">Administrador</option>
+                </select>
+            </div>
+        </div>
+        
+        <button class="btn" style="margin-top: 1rem;" onclick="asignarRol()">
+            <i class="fas fa-user-check"></i> Asignar Rol
+        </button>
+    </div>
+    
+    <!-- Tabla de permisos por rol -->
+    <div class="table-container">
+        <h3>Permisos por Rol</h3>
+        <table id="tablaPermisosRoles">
+            <thead>
+                <tr>
+                    <th>Rol</th>
+                    <th>Módulo</th>
+                    <th>Permiso</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="4" class="loading">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Tabla de usuarios y sus roles -->
+    <div class="table-container" style="margin-top: 2rem;">
+        <h3>Usuarios y Roles</h3>
+        <table id="tablaUsuariosRoles">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol Actual</th>
+                    <th>Último Acceso</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="5" class="loading">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
       </main>
     </div>
   </div>
@@ -1191,6 +1639,566 @@
         inicializarApp();
       }
     });
+    // ============ AGENDA ============
+async function cargarAgenda() {
+    const fechaInicio = document.getElementById('fechaInicioAgenda').value;
+    const fechaFin = document.getElementById('fechaFinAgenda').value;
+    
+    const result = await apiCall('obtener_agenda', {
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin
+    });
+    
+    const container = document.getElementById('vistaAgenda');
+    
+    if (result.success) {
+        let html = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 20px;">';
+        
+        // Generar días de la semana
+        const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        dias.forEach(dia => {
+            html += `<div style="background: #f7fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <strong style="color: #4c51bf;">${dia}</strong>`;
+            
+            // Filtrar citas para este día
+            const citasDia = result.citas.filter(c => {
+                const fechaCita = new Date(c.fecha);
+                const nombreDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][fechaCita.getDay()];
+                return nombreDia === dia;
+            });
+            
+            if (citasDia.length > 0) {
+                citasDia.forEach(cita => {
+                    html += `<div style="background: #c6f6d5; margin-top: 5px; padding: 5px; border-radius: 4px; font-size: 0.9em;">
+                                <strong>${cita.hora}</strong><br>
+                                ${cita.servicio}<br>
+                                <small>${cita.estudiante}</small>
+                             </div>`;
+                });
+            } else {
+                html += '<p style="color: #a0aec0; font-size: 0.9em; margin-top: 5px;">Sin citas</p>';
+            }
+            
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        
+        // Resumen
+        html += `<div style="background: #f0fff4; padding: 1rem; border-radius: 10px; margin-top: 1rem;">
+                    <h4>Resumen de la Semana</h4>
+                    <p><strong>Total de citas:</strong> ${result.citas.length}</p>
+                    <p><strong>Horarios configurados:</strong> ${result.horarios.length}</p>
+                    <p><strong>Bloqueos activos:</strong> ${result.bloqueos.length}</p>
+                 </div>`;
+        
+        container.innerHTML = html;
+        cargarHorarios();
+    } else {
+        container.innerHTML = '<p class="no-data">Error al cargar la agenda</p>';
+    }
+}
+
+async function cargarHorarios() {
+    const result = await apiCall('listar_horarios');
+    const tbody = document.querySelector('#tablaHorarios tbody');
+    
+    if (result.success && result.horarios.length > 0) {
+        tbody.innerHTML = result.horarios.map(h => `
+            <tr>
+                <td>${h.dia_semana}</td>
+                <td>${h.hora_inicio}</td>
+                <td>${h.hora_fin}</td>
+                <td>
+                    <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #fc8181;" 
+                            onclick="eliminarHorario(${h.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">No hay horarios configurados</td></tr>';
+    }
+}
+
+document.getElementById('formHorario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const data = {
+        dia_semana: document.getElementById('diaSemanaHorario').value,
+        hora_inicio: document.getElementById('horaInicioHorario').value,
+        hora_fin: document.getElementById('horaFinHorario').value
+    };
+    
+    const result = await apiCall('crear_horario', data);
+    
+    if (result.success) {
+        mostrarExito('successAgenda', 'Horario creado exitosamente');
+        e.target.reset();
+        cargarHorarios();
+    } else {
+        mostrarError('errorAgenda', result.message);
+    }
+});
+
+async function eliminarHorario(id) {
+    if (!confirm('¿Está seguro de eliminar este horario?')) return;
+    
+    const result = await apiCall('eliminar_horario', { id });
+    if (result.success) {
+        mostrarExito('successAgenda', result.message);
+        cargarHorarios();
+    } else {
+        mostrarError('errorAgenda', result.message);
+    }
+}
+
+document.getElementById('formBloqueo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const data = {
+        fecha_inicio: document.getElementById('fechaInicioBloqueo').value,
+        fecha_fin: document.getElementById('fechaFinBloqueo').value,
+        motivo: document.getElementById('motivoBloqueo').value,
+        tipo: document.getElementById('motivoBloqueo').value
+    };
+    
+    const result = await apiCall('bloquear_horario', data);
+    
+    if (result.success) {
+        mostrarExito('successAgenda', 'Horarios bloqueados exitosamente');
+        e.target.reset();
+        cargarAgenda();
+    } else {
+        mostrarError('errorAgenda', result.message);
+    }
+});
+
+// ============ SOLICITUDES ============
+async function cargarServiciosSolicitud() {
+    const tipo = document.getElementById('tipoSolicitud').value;
+    const select = document.getElementById('servicioSolicitud');
+    
+    // Filtrar servicios por tipo
+    const result = await apiCall('listar_servicios');
+    if (result.success) {
+        select.innerHTML = '<option value="">Seleccione servicio</option>';
+        result.servicios.forEach(s => {
+            // Aquí podrías filtrar por categoría según el tipo
+            select.innerHTML += `<option value="${s.id}">${s.nombre} - ${s.categoria}</option>`;
+        });
+    }
+}
+
+function mostrarArchivos() {
+    const input = document.getElementById('documentosSolicitud');
+    const container = document.getElementById('listaArchivos');
+    
+    container.innerHTML = '';
+    
+    Array.from(input.files).forEach((file, index) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f7fafc; border-radius: 5px; margin-bottom: 0.5rem;';
+        div.innerHTML = `
+            <div>
+                <i class="fas fa-file" style="margin-right: 0.5rem;"></i>
+                <span>${file.name}</span>
+                <small style="color: #718096; margin-left: 0.5rem;">(${(file.size / 1024 / 1024).toFixed(2)} MB)</small>
+            </div>
+            <button type="button" class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background: #fc8181;" 
+                    onclick="eliminarArchivo(${index})">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function eliminarArchivo(index) {
+    // En una implementación real, esto manejaría la eliminación de archivos
+    mostrarArchivos(); // Recargar vista
+}
+
+document.getElementById('formSolicitud').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const data = {
+        servicio_id: document.getElementById('servicioSolicitud').value,
+        motivo: document.getElementById('motivoSolicitud').value
+    };
+    
+    const result = await apiCall('crear_solicitud', data);
+    
+    if (result.success) {
+        mostrarExito('successSolicitud', 'Solicitud enviada exitosamente');
+        limpiarFormSolicitud();
+        cargarMisSolicitudes();
+    } else {
+        mostrarError('errorSolicitud', result.message);
+    }
+});
+
+async function cargarMisSolicitudes() {
+    const result = await apiCall('listar_solicitudes');
+    const tbody = document.querySelector('#tablaSolicitudes tbody');
+    
+    if (result.success && result.solicitudes.length > 0) {
+        tbody.innerHTML = result.solicitudes.map(s => `
+            <tr>
+                <td>${s.servicio}</td>
+                <td>${new Date(s.fecha_solicitud).toLocaleDateString()}</td>
+                <td>${s.motivo.substring(0, 50)}${s.motivo.length > 50 ? '...' : ''}</td>
+                <td><span class="badge badge-${s.estado}">${s.estado}</span></td>
+                <td>${s.comentarios_trabajador || '—'}</td>
+            </tr>
+        `).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No tienes solicitudes</td></tr>';
+    }
+}
+
+async function guardarBorrador() {
+    const data = {
+        servicio_id: document.getElementById('servicioSolicitud').value,
+        motivo: document.getElementById('motivoSolicitud').value
+    };
+    
+    const result = await apiCall('guardar_borrador', data);
+    
+    if (result.success) {
+        mostrarExito('successSolicitud', 'Borrador guardado exitosamente');
+    } else {
+        mostrarError('errorSolicitud', result.message);
+    }
+}
+
+function limpiarFormSolicitud() {
+    document.getElementById('formSolicitud').reset();
+    document.getElementById('listaArchivos').innerHTML = '';
+}
+
+// ============ GESTIÓN DE SOLICITUDES ============
+async function cargarSolicitudesParaGestion() {
+    const estado = document.getElementById('filtroEstadoSolicitud').value;
+    const tipo = document.getElementById('filtroTipoSolicitud').value;
+    const fechaDesde = document.getElementById('filtroFechaDesde').value;
+    const fechaHasta = document.getElementById('filtroFechaHasta').value;
+    
+    const data = {};
+    if (estado) data.estado = estado;
+    // Aquí agregarías más filtros según necesites
+    
+    const result = await apiCall('listar_solicitudes', data);
+    const tbody = document.querySelector('#tablaGestionSolicitudes tbody');
+    
+    if (result.success && result.solicitudes.length > 0) {
+        tbody.innerHTML = result.solicitudes.map(s => `
+            <tr>
+                <td>${s.estudiante}</td>
+                <td>${s.servicio}</td>
+                <td>${new Date(s.fecha_solicitud).toLocaleDateString()}</td>
+                <td>${s.motivo.substring(0, 30)}${s.motivo.length > 30 ? '...' : ''}</td>
+                <td><span class="badge badge-${s.estado}">${s.estado}</span></td>
+                <td>
+                    ${s.estado === 'pendiente' || s.estado === 'en_revision' ? `
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #48bb78;" 
+                                onclick="gestionarSolicitud(${s.id}, 'aprobar')">
+                            <i class="fas fa-check"></i> Aprobar
+                        </button>
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #fc8181;" 
+                                onclick="gestionarSolicitud(${s.id}, 'rechazar')">
+                            <i class="fas fa-times"></i> Rechazar
+                        </button>
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #f6e05e;" 
+                                onclick="solicitarMasInfo(${s.id})">
+                            <i class="fas fa-question"></i> Más Info
+                        </button>
+                    ` : '—'}
+                </td>
+            </tr>
+        `).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No hay solicitudes para gestionar</td></tr>';
+    }
+}
+
+async function gestionarSolicitud(id, accion) {
+    const comentario = prompt(`Ingrese comentarios para ${accion}:`, '');
+    
+    if (comentario !== null) {
+        const result = await apiCall('gestionar_solicitud', { id, accion, comentario });
+        
+        if (result.success) {
+            mostrarExito('successGestionSolicitud', `Solicitud ${accion} exitosamente`);
+            cargarSolicitudesParaGestion();
+        } else {
+            mostrarError('errorGestionSolicitud', result.message);
+        }
+    }
+}
+
+async function solicitarMasInfo(id) {
+    const info = prompt('¿Qué información adicional requiere del estudiante?', '');
+    
+    if (info) {
+        const result = await apiCall('gestionar_solicitud', { 
+            id, 
+            accion: 'solicitar_info', 
+            comentario: `Se solicita: ${info}` 
+        });
+        
+        if (result.success) {
+            mostrarExito('successGestionSolicitud', 'Solicitud de información enviada');
+            cargarSolicitudesParaGestion();
+        } else {
+            mostrarError('errorGestionSolicitud', result.message);
+        }
+    }
+}
+
+function filtrarSolicitudes() {
+    cargarSolicitudesParaGestion();
+}
+
+// ============ ESTADÍSTICAS ============
+async function generarEstadisticas() {
+    const data = {
+        fecha_inicio: document.getElementById('fechaInicioEstadisticas').value,
+        fecha_fin: document.getElementById('fechaFinEstadisticas').value,
+        categoria_id: document.getElementById('categoriaEstadisticas').value || null,
+        trabajador_id: document.getElementById('trabajadorEstadisticas').value || null
+    };
+    
+    const result = await apiCall('generar_estadisticas', data);
+    const container = document.getElementById('resultadosEstadisticas');
+    
+    if (result.success) {
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+                <!-- Tarjeta Citas -->
+                <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 15px;">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 1rem;"><i class="fas fa-calendar-check"></i> Citas</h3>
+                    <p><strong>Total:</strong> ${result.citas.total_citas || 0}</p>
+                    <p><strong>Completadas:</strong> ${result.citas.completadas || 0}</p>
+                    <p><strong>Canceladas:</strong> ${result.citas.canceladas || 0}</p>
+                    <p><strong>Tasa de éxito:</strong> ${(result.citas.tasa_exito || 0).toFixed(1)}%</p>
+                </div>
+                
+                <!-- Tarjeta Evaluaciones -->
+                <div style="background: linear-gradient(45deg, #48bb78, #38a169); color: white; padding: 1.5rem; border-radius: 15px;">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 1rem;"><i class="fas fa-star"></i> Evaluaciones</h3>
+                    <p><strong>Total evaluaciones:</strong> ${result.evaluaciones.total_evaluaciones || 0}</p>
+                    <p><strong>Promedio general:</strong> ${(result.evaluaciones.promedio_general || 0).toFixed(1)}/5.0</p>
+                    <p><strong>Calificación promedio:</strong> ${obtenerCalificacionTexto(result.evaluaciones.promedio_general || 0)}</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #f7fafc; border-radius: 10px;">
+                <h3 style="color: #4c51bf; margin-bottom: 1rem;">Resumen del Periodo</h3>
+                <p>Reporte generado para el periodo: <strong>${data.fecha_inicio} al ${data.fecha_fin}</strong></p>
+                <p style="color: #718096; font-size: 0.9rem; margin-top: 0.5rem;">
+                    <i class="fas fa-info-circle"></i> Los datos incluyen todas las actividades registradas en el sistema.
+                </p>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = '<p class="no-data">Error al generar estadísticas</p>';
+    }
+}
+
+function obtenerCalificacionTexto(promedio) {
+    if (promedio >= 4.5) return 'Excelente ⭐⭐⭐⭐⭐';
+    if (promedio >= 3.5) return 'Bueno ⭐⭐⭐⭐';
+    if (promedio >= 2.5) return 'Regular ⭐⭐⭐';
+    if (promedio >= 1.5) return 'Malo ⭐⭐';
+    return 'Muy Malo ⭐';
+}
+
+async function exportarPDF() {
+    const result = await apiCall('exportar_pdf');
+    
+    if (result.success) {
+        // En producción, esto descargaría el PDF
+        alert(`PDF generado: ${result.filename}`);
+        mostrarExito('successEstadisticas', 'PDF generado exitosamente');
+    } else {
+        mostrarError('errorEstadisticas', 'Error al generar PDF');
+    }
+}
+
+async function exportarExcel() {
+    const result = await apiCall('exportar_excel');
+    
+    if (result.success) {
+        alert(`Excel generado: ${result.filename}`);
+        mostrarExito('successEstadisticas', 'Excel generado exitosamente');
+    } else {
+        mostrarError('errorEstadisticas', 'Error al generar Excel');
+    }
+}
+
+// ============ ADMINISTRACIÓN DE ROLES ============
+async function cargarUsuariosParaRoles() {
+    // Obtener todos los usuarios
+    const result = await apiCall('listar_trabajadores'); // Esto solo da trabajadores, necesitarías otro endpoint
+    
+    // Por ahora, usaremos datos de prueba
+    const usuarios = [
+        { id: 1, nombre: 'Administrador Sistema', correo: 'admin@utp.ac.pa', rol: 'Administrador' },
+        { id: 2, nombre: 'Dra. María González', correo: 'maria.gonzalez@utp.ac.pa', rol: 'Trabajadora Social' },
+        { id: 3, nombre: 'Juan Pérez', correo: 'estudiante1@utp.ac.pa', rol: 'Estudiante' }
+    ];
+    
+    const select = document.getElementById('usuarioAsignarRol');
+    select.innerHTML = '<option value="">Seleccione usuario</option>';
+    usuarios.forEach(u => {
+        select.innerHTML += `<option value="${u.id}">${u.nombre} (${u.correo})</option>`;
+    });
+    
+    // Cargar tabla de usuarios
+    const tbody = document.querySelector('#tablaUsuariosRoles tbody');
+    tbody.innerHTML = usuarios.map(u => `
+        <tr>
+            <td>${u.nombre}</td>
+            <td>${u.correo}</td>
+            <td><span class="badge badge-activo">${u.rol}</span></td>
+            <td>Hoy</td>
+            <td><span class="badge badge-activo">Activo</span></td>
+        </tr>
+    `).join('');
+}
+
+async function cargarPermisosRoles() {
+    const result = await apiCall('listar_roles_permisos');
+    const tbody = document.querySelector('#tablaPermisosRoles tbody');
+    
+    if (result.success && result.roles_permisos.length > 0) {
+        tbody.innerHTML = result.roles_permisos.map(rp => `
+            <tr>
+                <td><span class="badge badge-activo">${rp.rol}</span></td>
+                <td>${rp.modulo}</td>
+                <td>${rp.permiso_nombre}</td>
+                <td>Permiso para ${rp.permiso_nombre.replace('_', ' ')} en módulo ${rp.modulo}</td>
+            </tr>
+        `).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">No hay permisos configurados</td></tr>';
+    }
+}
+
+async function asignarRol() {
+    const usuarioId = document.getElementById('usuarioAsignarRol').value;
+    const rol = document.getElementById('rolAsignar').value;
+    
+    if (!usuarioId || !rol) {
+        mostrarError('errorRoles', 'Seleccione usuario y rol');
+        return;
+    }
+    
+    const result = await apiCall('asignar_rol', { usuario_id: usuarioId, rol });
+    
+    if (result.success) {
+        mostrarExito('successRoles', 'Rol asignado exitosamente');
+        cargarUsuariosParaRoles();
+    } else {
+        mostrarError('errorRoles', result.message);
+    }
+}
+
+// ============ INICIALIZACIÓN ACTUALIZADA ============
+async function inicializarApp() {
+    document.getElementById('userName').textContent = currentUser.nombre;
+    document.getElementById('rolBadge').textContent = currentUser.rol;
+    document.getElementById('welcomeTitle').textContent = `Bienvenido, ${currentUser.nombre}`;
+    document.getElementById('welcomeDesc').textContent = 
+        currentUser.rol === 'Estudiante' ? 'Gestiona tus servicios de bienestar' : 
+        currentUser.rol === 'Trabajadora Social' ? 'Administra servicios y solicitudes' : 
+        'Administración completa del sistema';
+    
+    renderMenu();
+    cargarCategorias();
+    cargarServicios();
+    
+    if (currentUser.rol === 'Estudiante') {
+        cargarServiciosParaCitas();
+        cargarServiciosParaEval();
+        cargarCitas();
+        cargarMisSolicitudes();
+        cargarServiciosSolicitud();
+    } else if (currentUser.rol === 'Trabajadora Social') {
+        cargarMisServicios();
+        cargarEvaluaciones();
+        cargarEstadisticas();
+        cargarAgenda();
+        cargarSolicitudesParaGestion();
+    } else if (currentUser.rol === 'Administrador') {
+        cargarMisServicios();
+        cargarEvaluaciones();
+        cargarEstadisticas();
+        cargarAgenda();
+        cargarSolicitudesParaGestion();
+        cargarUsuariosParaRoles();
+        cargarPermisosRoles();
+    }
+    
+    // Fecha mínima para citas
+    document.getElementById('fechaCita').min = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaInicioBloqueo').min = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaFinBloqueo').min = new Date().toISOString().split('T')[0];
+    
+    // Establecer fechas por defecto
+    const hoy = new Date();
+    document.getElementById('fechaInicioBloqueo').value = hoy.toISOString().split('T')[0];
+    document.getElementById('fechaFinBloqueo').value = new Date(hoy.setDate(hoy.getDate() + 7)).toISOString().split('T')[0];
+}
+
+// ============ MENÚ ACTUALIZADO ============
+function renderMenu() {
+    const menu = document.getElementById('menuItems');
+    menu.innerHTML = '';
+    
+    const items = [
+        { id: 'seccionServicios', icon: 'list', text: 'Servicios Disponibles', roles: ['Estudiante', 'Trabajadora Social', 'Administrador'] }
+    ];
+    
+    if (currentUser.rol === 'Estudiante') {
+        items.push(
+            { id: 'seccionCitas', icon: 'calendar-alt', text: 'Mis Citas', roles: ['Estudiante'] },
+            { id: 'seccionEvaluaciones', icon: 'poll', text: 'Evaluar Servicios', roles: ['Estudiante'] },
+            { id: 'seccionSolicitarServicios', icon: 'file-alt', text: 'Solicitar Servicios', roles: ['Estudiante'] }
+        );
+    } else if (currentUser.rol === 'Trabajadora Social') {
+        items.push(
+            { id: 'seccionGestionServicios', icon: 'cogs', text: 'Gestionar Servicios', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionResultados', icon: 'chart-bar', text: 'Ver Resultados', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionAgenda', icon: 'calendar', text: 'Mi Agenda', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionGestionSolicitudes', icon: 'tasks', text: 'Gestionar Solicitudes', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionEstadisticas', icon: 'chart-pie', text: 'Estadísticas', roles: ['Trabajadora Social', 'Administrador'] }
+        );
+    } else if (currentUser.rol === 'Administrador') {
+        items.push(
+            { id: 'seccionGestionServicios', icon: 'cogs', text: 'Gestionar Servicios', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionResultados', icon: 'chart-bar', text: 'Ver Resultados', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionAgenda', icon: 'calendar', text: 'Mi Agenda', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionGestionSolicitudes', icon: 'tasks', text: 'Gestionar Solicitudes', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionEstadisticas', icon: 'chart-pie', text: 'Estadísticas', roles: ['Trabajadora Social', 'Administrador'] },
+            { id: 'seccionAdministracionRoles', icon: 'user-shield', text: 'Administrar Roles', roles: ['Administrador'] }
+        );
+    }
+
+    items.forEach(item => {
+        if (item.roles.includes(currentUser.rol)) {
+            const btn = document.createElement('button');
+            btn.innerHTML = `<i class="fas fa-${item.icon}"></i> ${item.text}`;
+            btn.onclick = () => mostrarSeccion(item.id);
+            if (item.id === currentSection) btn.classList.add('active');
+            menu.appendChild(btn);
+        }
+    });
+}
   </script>
 </body>
 </html>

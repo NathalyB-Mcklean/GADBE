@@ -409,6 +409,333 @@ if ($request === 'listar_trabajadores') {
     responder(['success' => true, 'trabajadores' => $stmt->fetchAll()]);
 }
 
+
+// ============ AGENDA ============
+if ($request === 'listar_horarios') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $trabajador_id = $data['trabajador_id'] ?? $_SESSION['user_id'];
+    
+    $stmt = $pdo->prepare("SELECT * FROM horarios_disponibles WHERE trabajador_social_id = ? ORDER BY dia_semana, hora_inicio");
+    $stmt->execute([$trabajador_id]);
+    responder(['success' => true, 'horarios' => $stmt->fetchAll()]);
+}
+
+if ($request === 'crear_horario') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO horarios_disponibles (trabajador_social_id, dia_semana, hora_inicio, hora_fin) VALUES (?, ?, ?, ?)");
+    $stmt->execute([
+        $_SESSION['user_id'],
+        $data['dia_semana'],
+        $data['hora_inicio'],
+        $data['hora_fin']
+    ]);
+    
+    $id = $pdo->lastInsertId();
+    registrarAuditoria($pdo, $_SESSION['user_id'], 'crear_horario', 'horarios_disponibles', $id);
+    
+    responder(['success' => true, 'message' => 'Horario creado', 'id' => $id]);
+}
+
+if ($request === 'eliminar_horario') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $pdo->prepare("DELETE FROM horarios_disponibles WHERE id = ? AND trabajador_social_id = ?")
+        ->execute([$data['id'], $_SESSION['user_id']]);
+    
+    registrarAuditoria($pdo, $_SESSION['user_id'], 'eliminar_horario', 'horarios_disponibles', $data['id']);
+    responder(['success' => true, 'message' => 'Horario eliminado']);
+}
+
+if ($request === 'bloquear_horario') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    // Verificar si hay citas en el periodo
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM citas 
+                          WHERE trabajador_social_id = ? 
+                          AND fecha BETWEEN ? AND ? 
+                          AND estado IN ('pendiente','confirmada')");
+    $stmt->execute([$_SESSION['user_id'], $data['fecha_inicio'], $data['fecha_fin']]);
+    $result = $stmt->fetch();
+    
+    if ($result['total'] > 0) {
+        responder(['success' => false, 'message' => "No se puede bloquear, tiene {$result['total']} citas programadas"]);
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO bloqueos_horarios (trabajador_social_id, fecha_inicio, fecha_fin, motivo, tipo) 
+                          VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $_SESSION['user_id'],
+        $data['fecha_inicio'],
+        $data['fecha_fin'],
+        $data['motivo'],
+        $data['tipo']
+    ]);
+    
+    $id = $pdo->lastInsertId();
+    registrarAuditoria($pdo, $_SESSION['user_id'], 'bloquear_horario', 'bloqueos_horarios', $id);
+    
+    responder(['success' => true, 'message' => 'Horario bloqueado', 'id' => $id]);
+}
+
+if ($request === 'obtener_agenda') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $trabajador_id = $data['trabajador_id'] ?? $_SESSION['user_id'];
+    $fecha_inicio = $data['fecha_inicio'] ?? date('Y-m-d');
+    $fecha_fin = $data['fecha_fin'] ?? date('Y-m-d', strtotime('+7 days'));
+    
+    // Obtener citas
+    $stmt = $pdo->prepare("SELECT c.*, s.nombre as servicio, u.nombre as estudiante 
+                          FROM citas c 
+                          JOIN servicios s ON c.servicio_id = s.id 
+                          JOIN usuarios u ON c.estudiante_id = u.id 
+                          WHERE c.trabajador_social_id = ? 
+                          AND c.fecha BETWEEN ? AND ? 
+                          ORDER BY c.fecha, c.hora");
+    $stmt->execute([$trabajador_id, $fecha_inicio, $fecha_fin]);
+    $citas = $stmt->fetchAll();
+    
+    // Obtener horarios disponibles
+    $stmt = $pdo->prepare("SELECT * FROM horarios_disponibles WHERE trabajador_social_id = ?");
+    $stmt->execute([$trabajador_id]);
+    $horarios = $stmt->fetchAll();
+    
+    // Obtener bloqueos
+    $stmt = $pdo->prepare("SELECT * FROM bloqueos_horarios 
+                          WHERE trabajador_social_id = ? 
+                          AND fecha_fin >= ?");
+    $stmt->execute([$trabajador_id, date('Y-m-d')]);
+    $bloqueos = $stmt->fetchAll();
+    
+    responder(['success' => true, 'citas' => $citas, 'horarios' => $horarios, 'bloqueos' => $bloqueos]);
+}
+
+// ============ SOLICITUDES ============
+if ($request === 'crear_solicitud') {
+    if (!isset($_SESSION['user_id'])) {
+        responder(['success' => false, 'message' => 'Debe iniciar sesión']);
+    }
+    
+    // Verificar límite de solicitudes activas
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM solicitudes 
+                          WHERE estudiante_id = ? 
+                          AND estado IN ('pendiente','en_revision')");
+    $stmt->execute([$_SESSION['user_id']]);
+    $result = $stmt->fetch();
+    
+    if ($result['total'] >= 3) {
+        responder(['success' => false, 'message' => 'Límite de 3 solicitudes activas alcanzado']);
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO solicitudes (estudiante_id, servicio_id, motivo, estado) 
+                          VALUES (?, ?, ?, 'pendiente')");
+    $stmt->execute([
+        $_SESSION['user_id'],
+        $data['servicio_id'],
+        $data['motivo']
+    ]);
+    
+    $id = $pdo->lastInsertId();
+    registrarAuditoria($pdo, $_SESSION['user_id'], 'crear_solicitud', 'solicitudes', $id);
+    
+    responder(['success' => true, 'message' => 'Solicitud creada', 'id' => $id]);
+}
+
+if ($request === 'listar_solicitudes') {
+    $where = ["1=1"];
+    $params = [];
+    
+    if ($_SESSION['user_rol'] === 'Estudiante') {
+        $where[] = "s.estudiante_id = ?";
+        $params[] = $_SESSION['user_id'];
+    } elseif ($_SESSION['user_rol'] === 'Trabajadora Social') {
+        // Puede ver solicitudes de servicios que ella maneja
+        $where[] = "ser.trabajador_social_id = ?";
+        $params[] = $_SESSION['user_id'];
+    }
+    
+    if (!empty($data['estado'])) {
+        $where[] = "s.estado = ?";
+        $params[] = $data['estado'];
+    }
+    
+    $sql = "SELECT s.*, ser.nombre as servicio, u.nombre as estudiante 
+            FROM solicitudes s 
+            JOIN servicios ser ON s.servicio_id = ser.id 
+            JOIN usuarios u ON s.estudiante_id = u.id 
+            WHERE " . implode(' AND ', $where) . " 
+            ORDER BY s.fecha_solicitud DESC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    responder(['success' => true, 'solicitudes' => $stmt->fetchAll()]);
+}
+
+if ($request === 'gestionar_solicitud') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $accion = $data['accion']; // 'aprobar', 'rechazar', 'solicitar_info'
+    $estado = ['aprobar' => 'aprobada', 'rechazar' => 'rechazada', 'solicitar_info' => 'en_revision'][$accion];
+    
+    $stmt = $pdo->prepare("UPDATE solicitudes SET estado = ?, comentarios_trabajador = ?, revisado_por = ?, fecha_revision = NOW() 
+                          WHERE id = ?");
+    $stmt->execute([
+        $estado,
+        $data['comentario'] ?? '',
+        $_SESSION['user_id'],
+        $data['id']
+    ]);
+    
+    registrarAuditoria($pdo, $_SESSION['user_id'], 'gestionar_solicitud', 'solicitudes', $data['id']);
+    responder(['success' => true, 'message' => "Solicitud {$accion}"]);
+}
+
+if ($request === 'guardar_borrador') {
+    if (!isset($_SESSION['user_id'])) {
+        responder(['success' => false, 'message' => 'Debe iniciar sesión']);
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO solicitudes (estudiante_id, servicio_id, motivo, estado) 
+                          VALUES (?, ?, ?, 'borrador') 
+                          ON DUPLICATE KEY UPDATE motivo = ?");
+    $stmt->execute([
+        $_SESSION['user_id'],
+        $data['servicio_id'] ?? null,
+        $data['motivo'] ?? '',
+        $data['motivo'] ?? ''
+    ]);
+    
+    responder(['success' => true, 'message' => 'Borrador guardado']);
+}
+
+// ============ ESTADÍSTICAS ============
+if ($request === 'generar_estadisticas') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $where = ["1=1"];
+    $params = [];
+    
+    if (!empty($data['fecha_inicio'])) {
+        $where[] = "c.fecha >= ?";
+        $params[] = $data['fecha_inicio'];
+    }
+    
+    if (!empty($data['fecha_fin'])) {
+        $where[] = "c.fecha <= ?";
+        $params[] = $data['fecha_fin'];
+    }
+    
+    if (!empty($data['categoria_id'])) {
+        $where[] = "s.categoria_id = ?";
+        $params[] = $data['categoria_id'];
+    }
+    
+    // Estadísticas de citas
+    $sql_citas = "SELECT 
+                    COUNT(*) as total_citas,
+                    SUM(CASE WHEN c.estado = 'completada' THEN 1 ELSE 0 END) as completadas,
+                    SUM(CASE WHEN c.estado = 'cancelada' THEN 1 ELSE 0 END) as canceladas,
+                    AVG(CASE WHEN c.estado = 'completada' THEN 1 ELSE 0 END) * 100 as tasa_exito
+                  FROM citas c
+                  JOIN servicios s ON c.servicio_id = s.id
+                  WHERE " . implode(' AND ', $where);
+    
+    $stmt = $pdo->prepare($sql_citas);
+    $stmt->execute($params);
+    $estadisticas_citas = $stmt->fetch();
+    
+    // Estadísticas de evaluaciones
+    $sql_eval = "SELECT 
+                   COUNT(*) as total_evaluaciones,
+                   AVG(CASE 
+                     WHEN calificacion = 'Excelente' THEN 5
+                     WHEN calificacion = 'Bueno' THEN 4
+                     WHEN calificacion = 'Regular' THEN 3
+                     WHEN calificacion = 'Malo' THEN 2
+                     WHEN calificacion = 'Muy Malo' THEN 1
+                   END) as promedio_general
+                 FROM evaluaciones e
+                 JOIN servicios s ON e.servicio_id = s.id
+                 WHERE " . implode(' AND ', $where);
+    
+    $stmt = $pdo->prepare($sql_eval);
+    $stmt->execute($params);
+    $estadisticas_eval = $stmt->fetch();
+    
+    responder(['success' => true, 'citas' => $estadisticas_citas, 'evaluaciones' => $estadisticas_eval]);
+}
+
+if ($request === 'exportar_pdf') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    // Simular generación de PDF (en producción usarías una librería como TCPDF o Dompdf)
+    $filename = "reporte_" . date('Y-m-d_H-i-s') . ".pdf";
+    $content = "Reporte generado el " . date('Y-m-d H:i:s');
+    
+    responder(['success' => true, 'message' => 'PDF generado', 'filename' => $filename, 'content' => base64_encode($content)]);
+}
+
+if ($request === 'exportar_excel') {
+    if (!in_array($_SESSION['user_rol'] ?? '', ['Trabajadora Social', 'Administrador'])) {
+        responder(['success' => false, 'message' => 'Sin permisos']);
+    }
+    
+    $filename = "reporte_" . date('Y-m-d_H-i-s') . ".xlsx";
+    
+    responder(['success' => true, 'message' => 'Excel generado', 'filename' => $filename]);
+}
+
+// ============ ROLES Y PERMISOS ============
+if ($request === 'listar_roles_permisos') {
+    if ($_SESSION['user_rol'] !== 'Administrador') {
+        responder(['success' => false, 'message' => 'Solo administrador']);
+    }
+    
+    $stmt = $pdo->query("SELECT rp.*, p.nombre as permiso_nombre, p.modulo 
+                        FROM roles_permisos rp 
+                        JOIN permisos p ON rp.permiso_id = p.id 
+                        ORDER BY rp.rol, p.modulo");
+    responder(['success' => true, 'roles_permisos' => $stmt->fetchAll()]);
+}
+
+if ($request === 'asignar_rol') {
+    if ($_SESSION['user_rol'] !== 'Administrador') {
+        responder(['success' => false, 'message' => 'Solo administrador']);
+    }
+    
+    // Verificar que no sea auto-asignación de administrador
+    if ($data['usuario_id'] == $_SESSION['user_id'] && $data['rol'] !== 'Administrador') {
+        responder(['success' => false, 'message' => 'No puede modificar sus propios privilegios administrativos']);
+    }
+    
+    $pdo->prepare("UPDATE usuarios SET rol = ? WHERE id = ?")
+        ->execute([$data['rol'], $data['usuario_id']]);
+    
+    registrarAuditoria($pdo, $_SESSION['user_id'], 'asignar_rol', 'usuarios', $data['usuario_id']);
+    responder(['success' => true, 'message' => 'Rol asignado']);
+}
+
+// Agregar esto ANTES del último responder() en api.php
+// (antes de: responder(['success' => false, 'message' => 'Acción no válida']))
+
 // Acción no encontrada
 responder(['success' => false, 'message' => 'Acción no válida: ' . $request]);
 ?>
