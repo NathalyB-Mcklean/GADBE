@@ -1,0 +1,50 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Composer
+/vendor/
+composer.lock
+composer.phar
+
+# IDEs
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# PHPUnit
+/coverage/
+.phpunit.result.cache
+
+# Logs
+*.log
+/logs/
+error_log
+
+# Uploads
+/uploads/*
+!/uploads/.gitkeep
+
+# Temp files
+/tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# SonarQube
+.scannerwork/
+.sonar/
+
+# Node (si usas frontend tooling)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build artifacts
+/build/
+/dist/
