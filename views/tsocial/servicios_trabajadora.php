@@ -102,22 +102,76 @@ try {
         if (isset($_POST['eliminar_servicio'])) {
             $id_servicio = $_POST['id_servicio'];
             
-            // Verificar si tiene citas programadas
-            $stmt = $conn->prepare("
-                SELECT COUNT(*) as citas FROM citas 
+            // Verificar si tiene CUALQUIER cita asociada (pasadas, presentes o futuras)
+            $stmt_total = $conn->prepare("
+                SELECT COUNT(*) as total_citas FROM citas 
+                WHERE id_servicio = ?
+            ");
+            $stmt_total->execute([$id_servicio]);
+            $total_citas = $stmt_total->fetch()['total_citas'];
+            
+            // Verificar citas activas (futuras y no canceladas)
+            $stmt_activas = $conn->prepare("
+                SELECT COUNT(*) as citas_activas,
+                       GROUP_CONCAT(
+                           CONCAT(DATE_FORMAT(fecha_cita, '%d/%m/%Y'), ' a las ', 
+                                  DATE_FORMAT(hora_inicio, '%H:%i'))
+                           ORDER BY fecha_cita 
+                           SEPARATOR '<br>• '
+                       ) as fechas_citas
+                FROM citas 
                 WHERE id_servicio = ? 
                 AND fecha_cita >= CURDATE()
-                AND estado NOT IN ('cancelada', 'completada')
+                AND estado NOT IN ('cancelada', 'completada', 'no_asistio')
             ");
-            $stmt->execute([$id_servicio]);
-            $citas_activas = $stmt->fetch()['citas'];
+            $stmt_activas->execute([$id_servicio]);
+            $resultado_activas = $stmt_activas->fetch();
+            $citas_activas = $resultado_activas['citas_activas'];
+            $fechas_citas = $resultado_activas['fechas_citas'];
             
-            if ($citas_activas > 0) {
-                $error = "No se puede eliminar. El servicio tiene $citas_activas citas programadas activas.";
+            // Obtener nombre del servicio para el mensaje
+            $stmt_nombre = $conn->prepare("SELECT nombre FROM servicios_ofertas WHERE id_servicio = ?");
+            $stmt_nombre->execute([$id_servicio]);
+            $nombre_servicio = $stmt_nombre->fetch()['nombre'];
+            
+            // No permitir eliminación si hay citas asociadas
+            if ($total_citas > 0) {
+                if ($citas_activas > 0) {
+                    $error = "<strong>❌ ERROR: No se puede eliminar el servicio</strong><br><br>" .
+                             "<strong>Servicio:</strong> " . htmlspecialchars($nombre_servicio) . "<br><br>" .
+                             "<strong>Motivo:</strong> Este servicio tiene <strong>" . $citas_activas . " cita(s) activa(s) programada(s)</strong>:<br><br>" .
+                             "<div class='ms-3'>• " . $fechas_citas . "</div><br>" .
+                             "<strong>Solución:</strong><br>" .
+                             "1. Vaya a <strong>Gestión de Citas</strong><br>" .
+                             "2. Cancele o elimine todas las citas asociadas a este servicio<br>" .
+                             "3. Luego podrá eliminar el servicio sin problemas";
+                } else {
+                    $error = "<strong>❌ ERROR: No se puede eliminar el servicio</strong><br><br>" .
+                             "<strong>Servicio:</strong> " . htmlspecialchars($nombre_servicio) . "<br><br>" .
+                             "<strong>Motivo:</strong> Este servicio tiene <strong>" . $total_citas . " cita(s) en el historial</strong> " .
+                             "(completadas o canceladas).<br><br>" .
+                             "<strong>Política de integridad de datos:</strong><br>" .
+                             "Los servicios con historial de citas no pueden ser eliminados para mantener " .
+                             "la trazabilidad y los registros históricos del sistema.<br><br>" .
+                             "<strong>Alternativa recomendada:</strong><br>" .
+                             "En lugar de eliminar, puede <strong>desactivar</strong> este servicio:<br>" .
+                             "1. Click en <strong>Editar</strong> el servicio<br>" .
+                             "2. Desmarcar la opción <strong>'Servicio activo'</strong><br>" .
+                             "3. Guardar cambios<br><br>" .
+                             "El servicio dejará de aparecer en los listados pero mantendrá su historial.";
+                }
             } else {
-                $stmt = $conn->prepare("DELETE FROM servicios_ofertas WHERE id_servicio = ?");
-                $stmt->execute([$id_servicio]);
-                $message = "Servicio eliminado exitosamente";
+                // No hay citas asociadas, se puede eliminar
+                try {
+                    $stmt = $conn->prepare("DELETE FROM servicios_ofertas WHERE id_servicio = ?");
+                    $stmt->execute([$id_servicio]);
+                    $message = "✅ <strong>Servicio eliminado exitosamente</strong><br><br>" .
+                               "<strong>Servicio eliminado:</strong> " . htmlspecialchars($nombre_servicio) . "<br>" .
+                               "El servicio no tenía citas asociadas y ha sido eliminado permanentemente de la base de datos.";
+                } catch (Exception $e) {
+                    $error = "<strong>❌ ERROR al eliminar el servicio</strong><br><br>" .
+                             "Ocurrió un error técnico: " . htmlspecialchars($e->getMessage());
+                }
             }
         }
     }
@@ -131,7 +185,16 @@ try {
         SELECT s.*, 
                c.nombre_categoria,
                u.nombre_completo as trabajadora_nombre,
-               (SELECT COUNT(*) FROM citas WHERE id_servicio = s.id_servicio AND fecha_cita >= CURDATE()) as citas_pendientes
+               (SELECT COUNT(*) 
+                FROM citas 
+                WHERE id_servicio = s.id_servicio 
+                AND fecha_cita >= CURDATE()
+                AND estado NOT IN ('cancelada', 'completada', 'no_asistio')
+               ) as citas_pendientes,
+               (SELECT COUNT(*) 
+                FROM citas 
+                WHERE id_servicio = s.id_servicio
+               ) as total_citas_historial
         FROM servicios_ofertas s
         LEFT JOIN categorias_servicios c ON s.id_categoria = c.id_categoria
         LEFT JOIN usuarios u ON s.id_trabajadora_social = u.id_usuario
@@ -206,14 +269,14 @@ ob_start();
 
 <?php if ($message): ?>
     <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle-fill"></i> <?php echo htmlspecialchars($message); ?>
+        <i class="bi bi-check-circle-fill"></i> <?php echo $message; // Permite HTML ?>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 <?php endif; ?>
 
 <?php if ($error): ?>
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle-fill"></i> <?php echo htmlspecialchars($error); ?>
+        <i class="bi bi-exclamation-triangle-fill"></i> <?php echo $error; // Permite HTML ?>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 <?php endif; ?>
@@ -254,7 +317,7 @@ ob_start();
         <button type="button" class="stats-card" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; width: 100%;"
                 data-bs-toggle="modal" data-bs-target="#modalCrearServicio">
             <div class="stats-value"><i class="bi bi-plus-circle"></i></div>
-            <div class="stats-label">Nuevo</div>
+            <div class="stats-label">Agregar</div>
         </button>
     </div>
 </div>
@@ -324,6 +387,23 @@ ob_start();
                                         <span class="badge bg-success">Activo</span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Inactivo</span>
+                                    <?php endif; ?>
+                                    
+                                    <!-- Badges de estado de citas -->
+                                    <?php if ($servicio['citas_pendientes'] > 0): ?>
+                                        <span class="badge bg-warning text-dark" 
+                                              title="Citas programadas activas">
+                                            <i class="bi bi-calendar-check"></i> 
+                                            <?php echo $servicio['citas_pendientes']; ?> programada(s)
+                                        </span>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($servicio['total_citas_historial'] > 0 && $servicio['citas_pendientes'] == 0): ?>
+                                        <span class="badge bg-info text-dark" 
+                                              title="Tiene historial de citas">
+                                            <i class="bi bi-clock-history"></i> 
+                                            <?php echo $servicio['total_citas_historial']; ?> en historial
+                                        </span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="dropdown">
@@ -399,8 +479,16 @@ ob_start();
                                 </div>
                                 
                                 <div class="col-12">
-                                    <i class="bi bi-calendar-event"></i> 
-                                    Citas pendientes: <?php echo $servicio['citas_pendientes']; ?>
+                                    <?php if ($servicio['citas_pendientes'] > 0): ?>
+                                        <i class="bi bi-calendar-event text-warning"></i> 
+                                        <strong>Citas activas: <?php echo $servicio['citas_pendientes']; ?></strong>
+                                    <?php elseif ($servicio['total_citas_historial'] > 0): ?>
+                                        <i class="bi bi-calendar-check text-success"></i> 
+                                        Historial: <?php echo $servicio['total_citas_historial']; ?> cita(s)
+                                    <?php else: ?>
+                                        <i class="bi bi-calendar-x text-muted"></i> 
+                                        Sin citas asociadas
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -416,7 +504,80 @@ ob_start();
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <?php include 'form_servicio.php'; ?>
+                                        <input type="hidden" name="id_servicio" value="<?php echo $servicio['id_servicio']; ?>">
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Tipo *</label>
+                                                <select name="tipo" class="form-select" required>
+                                                    <option value="servicio" <?php echo $servicio['tipo'] == 'servicio' ? 'selected' : ''; ?>>Servicio</option>
+                                                    <option value="oferta" <?php echo $servicio['tipo'] == 'oferta' ? 'selected' : ''; ?>>Oferta</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Categoría</label>
+                                                <select name="id_categoria" class="form-select">
+                                                    <option value="">Sin categoría</option>
+                                                    <?php foreach ($categorias as $categoria): ?>
+                                                        <option value="<?php echo $categoria['id_categoria']; ?>"
+                                                                <?php echo $servicio['id_categoria'] == $categoria['id_categoria'] ? 'selected' : ''; ?>>
+                                                            <?php echo htmlspecialchars($categoria['nombre_categoria']); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Nombre *</label>
+                                                <input type="text" name="nombre" class="form-control" required 
+                                                       value="<?php echo htmlspecialchars($servicio['nombre']); ?>">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Descripción</label>
+                                                <textarea name="descripcion" class="form-control" rows="4"><?php echo htmlspecialchars($servicio['descripcion']); ?></textarea>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Ubicación</label>
+                                                <input type="text" name="ubicacion" class="form-control" 
+                                                       value="<?php echo htmlspecialchars($servicio['ubicacion']); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Fecha Límite (opcional)</label>
+                                                <input type="date" name="fecha_limite" class="form-control" 
+                                                       value="<?php echo $servicio['fecha_limite']; ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Duración estimada (minutos)</label>
+                                                <input type="number" name="duracion_estimada" class="form-control" 
+                                                       min="15" max="480" value="<?php echo $servicio['duracion_estimada']; ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Opciones</label>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="requiere_cita" 
+                                                           id="requiere_cita_<?php echo $servicio['id_servicio']; ?>" 
+                                                           value="1" <?php echo $servicio['requiere_cita'] ? 'checked' : ''; ?>>
+                                                    <label class="form-check-label" for="requiere_cita_<?php echo $servicio['id_servicio']; ?>">
+                                                        Requiere cita previa
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="requiere_documentacion" 
+                                                           id="requiere_doc_<?php echo $servicio['id_servicio']; ?>" 
+                                                           value="1" <?php echo $servicio['requiere_documentacion'] ? 'checked' : ''; ?>>
+                                                    <label class="form-check-label" for="requiere_doc_<?php echo $servicio['id_servicio']; ?>">
+                                                        Requiere documentación
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="activo" 
+                                                           id="activo_<?php echo $servicio['id_servicio']; ?>" 
+                                                           value="1" <?php echo $servicio['activo'] ? 'checked' : ''; ?>>
+                                                    <label class="form-check-label" for="activo_<?php echo $servicio['id_servicio']; ?>">
+                                                        Servicio activo
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -439,27 +600,69 @@ ob_start();
                                     <div class="modal-body">
                                         <input type="hidden" name="id_servicio" value="<?php echo $servicio['id_servicio']; ?>">
                                         
-                                        <div class="alert alert-warning">
+                                        <div class="alert alert-warning mb-3">
                                             <i class="bi bi-exclamation-triangle"></i>
-                                            <strong>¿Está seguro de eliminar este servicio?</strong>
+                                            <strong>¿Está seguro de eliminar este servicio/oferta?</strong>
                                             <br><br>
                                             <strong><?php echo htmlspecialchars($servicio['nombre']); ?></strong>
-                                            <br><br>
-                                            <?php if ($servicio['citas_pendientes'] > 0): ?>
-                                                <div class="alert alert-danger">
-                                                    <i class="bi bi-calendar-x"></i>
-                                                    <strong>¡Advertencia!</strong> Este servicio tiene 
-                                                    <?php echo $servicio['citas_pendientes']; ?> citas programadas.
-                                                    No se puede eliminar hasta que se cancelen todas las citas.
-                                                </div>
-                                            <?php endif; ?>
+                                            <br>
+                                            <small class="text-muted">
+                                                Tipo: <?php echo $servicio['tipo'] == 'servicio' ? 'Servicio' : 'Oferta'; ?> | 
+                                                Categoría: <?php echo htmlspecialchars($servicio['nombre_categoria'] ?: 'Sin categoría'); ?>
+                                            </small>
+                                        </div>
+                                        
+                                        <!-- Información de estado de citas -->
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title mb-2">
+                                                    <i class="bi bi-info-circle"></i> Estado del Servicio
+                                                </h6>
+                                                <ul class="list-unstyled mb-0 small">
+                                                    <li>
+                                                        <strong>Citas activas programadas:</strong> 
+                                                        <span class="badge bg-<?php echo $servicio['citas_pendientes'] > 0 ? 'warning' : 'success'; ?>">
+                                                            <?php echo $servicio['citas_pendientes']; ?>
+                                                        </span>
+                                                    </li>
+                                                    <li>
+                                                        <strong>Total en historial:</strong> 
+                                                        <span class="badge bg-<?php echo $servicio['total_citas_historial'] > 0 ? 'info' : 'secondary'; ?>">
+                                                            <?php echo $servicio['total_citas_historial']; ?>
+                                                        </span>
+                                                    </li>
+                                                    <li class="mt-2">
+                                                        <?php if ($servicio['total_citas_historial'] > 0): ?>
+                                                            <i class="bi bi-exclamation-circle text-warning"></i>
+                                                            <span class="text-warning">
+                                                                <strong>Advertencia:</strong> Este servicio tiene citas asociadas.
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <i class="bi bi-check-circle text-success"></i>
+                                                            <span class="text-success">
+                                                                Este servicio no tiene citas asociadas y puede ser eliminado.
+                                                            </span>
+                                                        <?php endif; ?>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="alert alert-danger mt-3 mb-0">
+                                            <small>
+                                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                                <strong>Importante:</strong> Esta acción no se puede deshacer. 
+                                                Si el servicio tiene citas asociadas, no podrá ser eliminado.
+                                            </small>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <?php if ($servicio['citas_pendientes'] == 0): ?>
-                                            <button type="submit" name="eliminar_servicio" class="btn btn-danger">Eliminar</button>
-                                        <?php endif; ?>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            <i class="bi bi-x-circle"></i> Cancelar
+                                        </button>
+                                        <button type="submit" name="eliminar_servicio" class="btn btn-danger">
+                                            <i class="bi bi-trash"></i> Confirmar Eliminación
+                                        </button>
                                     </div>
                                 </form>
                             </div>

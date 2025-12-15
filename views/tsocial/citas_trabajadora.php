@@ -28,6 +28,17 @@ $estadisticas = [];
 $fecha_seleccionada = $_GET['fecha'] ?? date('Y-m-d');
 $vista = $_GET['vista'] ?? 'semana'; // semana, mes, dia
 
+// Verificar si hay mensajes flash de redirección
+if (isset($_SESSION['flash_message'])) {
+    $message = $_SESSION['flash_message'];
+    unset($_SESSION['flash_message']);
+}
+if (isset($_SESSION['flash_type']) && $_SESSION['flash_type'] == 'error') {
+    $error = $message;
+    $message = '';
+    unset($_SESSION['flash_type']);
+}
+
 try {
     $conn = getDBConnection();
     
@@ -76,6 +87,33 @@ try {
             } else {
                 $error = "El horario seleccionado no está disponible";
             }
+        }
+        
+        if (isset($_POST['eliminar_cita'])) {
+            $id_cita = $_POST['id_cita'];
+            
+            // Obtener información de la cita antes de eliminar
+            $stmt_info = $conn->prepare("
+                SELECT c.codigo_cita, s.nombre as servicio_nombre
+                FROM citas c
+                INNER JOIN servicios_ofertas s ON c.id_servicio = s.id_servicio
+                WHERE c.id_cita = ?
+            ");
+            $stmt_info->execute([$id_cita]);
+            $cita_info = $stmt_info->fetch();
+            
+            // Eliminar la cita físicamente de la base de datos
+            $stmt = $conn->prepare("DELETE FROM citas WHERE id_cita = ?");
+            $stmt->execute([$id_cita]);
+            
+            $message = "✅ Cita eliminada exitosamente (Código: " . $cita_info['codigo_cita'] . "). " .
+                       "El servicio '" . $cita_info['servicio_nombre'] . "' ahora puede ser eliminado si no tiene más citas.";
+            
+            // Redirigir para refrescar la página y mostrar los cambios
+            $_SESSION['flash_message'] = $message;
+            $_SESSION['flash_type'] = 'success';
+            header("Location: " . $_SERVER['PHP_SELF'] . "?vista=" . $vista);
+            exit();
         }
     }
     
@@ -365,6 +403,12 @@ ob_start();
                                             data-bs-toggle="modal" data-bs-target="#modalCancelar<?php echo $cita['id_cita']; ?>">
                                         <i class="bi bi-x-circle"></i> Cancelar
                                     </button>
+                                    
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#modalEliminar<?php echo $cita['id_cita']; ?>"
+                                            title="Eliminar cita permanentemente">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -432,6 +476,69 @@ ob_start();
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No cancelar</button>
                                         <button type="submit" name="cancelar_cita" class="btn btn-danger">Confirmar Cancelación</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Modal Eliminar Cita -->
+                    <div class="modal fade" id="modalEliminar<?php echo $cita['id_cita']; ?>" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-trash"></i> Eliminar Cita Permanentemente
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <input type="hidden" name="id_cita" value="<?php echo $cita['id_cita']; ?>">
+                                        
+                                        <div class="alert alert-danger mb-3">
+                                            <h6 class="alert-heading">
+                                                <i class="bi bi-exclamation-triangle-fill"></i> 
+                                                ¡Advertencia! Esta acción no se puede deshacer
+                                            </h6>
+                                            <p class="mb-0">
+                                                La cita será eliminada <strong>permanentemente</strong> de la base de datos.
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="card bg-light mb-3">
+                                            <div class="card-body">
+                                                <h6 class="card-title mb-2">Información de la Cita:</h6>
+                                                <ul class="list-unstyled mb-0 small">
+                                                    <li><strong>Código:</strong> <?php echo htmlspecialchars($cita['codigo_cita']); ?></li>
+                                                    <li><strong>Estudiante:</strong> <?php echo htmlspecialchars($cita['estudiante_nombre']); ?></li>
+                                                    <li><strong>Servicio:</strong> <?php echo htmlspecialchars($cita['servicio_nombre']); ?></li>
+                                                    <li><strong>Fecha:</strong> <?php echo date('d/m/Y', strtotime($cita['fecha_cita'])); ?></li>
+                                                    <li><strong>Hora:</strong> <?php echo date('H:i', strtotime($cita['hora_inicio'])); ?> - <?php echo date('H:i', strtotime($cita['hora_fin'])); ?></li>
+                                                    <li><strong>Estado:</strong> 
+                                                        <span class="badge <?php echo $badge_class; ?>">
+                                                            <?php echo ucfirst($cita['estado']); ?>
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="alert alert-info mb-0">
+                                            <small>
+                                                <i class="bi bi-info-circle"></i> 
+                                                <strong>Nota:</strong> Si esta es la última cita del servicio "<?php echo htmlspecialchars($cita['servicio_nombre']); ?>", 
+                                                después de eliminarla podrá eliminar el servicio si lo desea.
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            <i class="bi bi-x-circle"></i> No, mantener cita
+                                        </button>
+                                        <button type="submit" name="eliminar_cita" class="btn btn-danger">
+                                            <i class="bi bi-trash-fill"></i> Sí, eliminar permanentemente
+                                        </button>
                                     </div>
                                 </form>
                             </div>
