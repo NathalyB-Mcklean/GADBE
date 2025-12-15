@@ -143,7 +143,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Redirigir según rol
         switch ($usuario['nombre_rol']) {
             case 'Administrador':
-                header("Location: ../admin/dashboard.php");
+                header("Location: ../admin/dashboard_admin.php");
                 break;
             case 'Trabajadora Social':
                 header("Location: ../tsocial/dashboard.php");
