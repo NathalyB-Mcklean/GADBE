@@ -14,6 +14,18 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'Estudiante') {
     exit();
 }
 
+// ========== NUEVO: Cargar configuración de imágenes ==========
+$imagenes_servicios = [
+    'Asistencia provisional para transporte' => 'images/transporte.jpg',
+    'Asistencia alimentaria' => 'images/alimentacion.jpg',
+    'Crédito bibliográfico' => 'images/libros.jpg',
+    'Mecenazgo académico' => 'images/mecenazgo.jpg',
+    'Trabajo compensatorio para cubrir matrículas' => 'images/trabajo.jpg',
+    'Acuerdo de pago para la matrícula' => 'images/pago.jpg',
+    'Becas para estudiantes en situación de vulnerabilidad' => 'images/beca.jpg',
+    'default' => 'images/servicio-default.jpg'
+];
+
 try {
     $conn = getDBConnection();
     
@@ -110,7 +122,7 @@ try {
         .service-card {
             background: white;
             border-radius: 10px;
-            padding: 20px;
+            overflow: hidden;
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border-left: 4px solid var(--utp-green);
@@ -122,6 +134,18 @@ try {
             transform: translateY(-5px);
         }
         
+        /* ========== NUEVO: Estilos para imágenes ========== */
+        .service-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+        }
+        
+        .service-content {
+            padding: 20px;
+        }
+        
         .category-header {
             background: linear-gradient(135deg, var(--utp-green) 0%, var(--utp-green-dark) 100%);
             color: white;
@@ -129,6 +153,29 @@ try {
             border-radius: 10px;
             margin-bottom: 20px;
             margin-top: 30px;
+        }
+        
+        /* ========== NUEVO: Estilos para botones ========== */
+        .btn-servicio {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+        }
+        
+        .btn-servicio:hover {
+            background-color: #0b5ed7;
+            color: white;
+        }
+        
+        .btn-oferta {
+            background-color: var(--utp-green);
+            color: white;
+            border: none;
+        }
+        
+        .btn-oferta:hover {
+            background-color: var(--utp-green-dark);
+            color: white;
         }
     </style>
 </head>
@@ -170,6 +217,16 @@ try {
             </div>
         <?php endif; ?>
         
+        <!-- ========== NUEVO: Leyenda ========== -->
+        <div class="alert alert-info mb-4">
+            <h6 class="mb-2"><i class="bi bi-info-circle"></i> Tipos de servicios:</h6>
+            <span class="badge bg-info me-2"><i class="bi bi-calendar-check"></i> SERVICIO</span> 
+            <small>Agenda una cita directamente</small>
+            <br>
+            <span class="badge bg-warning text-dark mt-2 me-2"><i class="bi bi-file-earmark-text"></i> OFERTA</span> 
+            <small>Requiere solicitud formal con documentos</small>
+        </div>
+        
         <?php if (count($servicios_por_categoria) > 0): ?>
             <?php foreach ($servicios_por_categoria as $categoria => $servicios_cat): ?>
                 <div class="category-header">
@@ -178,60 +235,93 @@ try {
                 
                 <div class="row">
                     <?php foreach ($servicios_cat as $servicio): ?>
+                        <?php
+                        // ========== NUEVO: Obtener imagen del servicio ==========
+                        $imagen = $imagenes_servicios[$servicio['nombre']] ?? $imagenes_servicios['default'];
+                        ?>
                         <div class="col-md-6">
                             <div class="service-card">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <h5 class="text-success mb-0"><?php echo htmlspecialchars($servicio['nombre']); ?></h5>
-                                    <span class="badge bg-<?php echo $servicio['tipo'] === 'oferta' ? 'warning' : 'info'; ?>">
-                                        <?php echo ucfirst($servicio['tipo']); ?>
-                                    </span>
-                                </div>
+                                <!-- ========== NUEVO: Mostrar imagen ========== -->
+                                <img src="../../<?php echo htmlspecialchars($imagen); ?>" 
+                                     alt="<?php echo htmlspecialchars($servicio['nombre']); ?>"
+                                     class="service-image"
+                                     onerror="this.src='../../images/servicio-default.jpg'">
                                 
-                                <p class="text-muted mb-3"><?php echo htmlspecialchars($servicio['descripcion']); ?></p>
-                                
-                                <div class="mb-3">
-                                    <?php if ($servicio['requiere_cita']): ?>
-                                        <span class="badge bg-primary me-2">
-                                            <i class="bi bi-calendar-check"></i> Requiere cita
+                                <!-- ========== NUEVO: Contenido en div separado ========== -->
+                                <div class="service-content">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 class="text-success mb-0"><?php echo htmlspecialchars($servicio['nombre']); ?></h5>
+                                        <span class="badge bg-<?php echo $servicio['tipo'] === 'oferta' ? 'warning text-dark' : 'info'; ?>">
+                                            <?php echo strtoupper($servicio['tipo']); ?>
                                         </span>
-                                    <?php endif; ?>
+                                    </div>
                                     
-                                    <?php if ($servicio['requiere_documentacion']): ?>
-                                        <span class="badge bg-secondary me-2">
-                                            <i class="bi bi-file-earmark-text"></i> Requiere documentación
-                                        </span>
-                                    <?php endif; ?>
+                                    <p class="text-muted mb-3">
+                                        <?php 
+                                        $desc = htmlspecialchars($servicio['descripcion']);
+                                        echo strlen($desc) > 200 ? substr($desc, 0, 200) . '...' : $desc;
+                                        ?>
+                                    </p>
                                     
-                                    <?php if ($servicio['duracion_estimada']): ?>
-                                        <span class="badge bg-info">
-                                            <i class="bi bi-clock"></i> <?php echo $servicio['duracion_estimada']; ?> min
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <?php if ($servicio['ubicacion']): ?>
                                     <div class="mb-3">
-                                        <small class="text-muted">
-                                            <i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($servicio['ubicacion']); ?>
-                                        </small>
+                                        <?php if ($servicio['requiere_cita']): ?>
+                                            <span class="badge bg-primary me-2">
+                                                <i class="bi bi-calendar-check"></i> Requiere cita
+                                            </span>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($servicio['requiere_documentacion']): ?>
+                                            <span class="badge bg-secondary me-2">
+                                                <i class="bi bi-file-earmark-text"></i> Requiere documentación
+                                            </span>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($servicio['duracion_estimada']): ?>
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-clock"></i> 
+                                                <?php 
+                                                $dias = $servicio['duracion_estimada'];
+                                                if ($dias >= 365) {
+                                                    echo round($dias/365, 1) . ' año(s)';
+                                                } else if ($dias >= 30) {
+                                                    echo round($dias/30) . ' mes(es)';
+                                                } else {
+                                                    echo $dias . ' día(s)';
+                                                }
+                                                ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
-                                <?php endif; ?>
-                                
-                                <?php if ($servicio['fecha_limite']): ?>
-                                    <div class="alert alert-warning mb-3">
-                                        <small><i class="bi bi-calendar-event"></i> Disponible hasta: <?php echo date('d/m/Y', strtotime($servicio['fecha_limite'])); ?></small>
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <?php if ($servicio['requiere_cita']): ?>
-                                    <a href="citas.php?servicio=<?php echo $servicio['id_servicio']; ?>" class="btn btn-primary">
-                                        <i class="bi bi-calendar-plus"></i> Programar cita
-                                    </a>
-                                <?php else: ?>
-                                    <a href="nueva_solicitud.php?servicio=<?php echo $servicio['id_servicio']; ?>" class="btn btn-success">
-                                        <i class="bi bi-file-earmark-plus"></i> Solicitar este servicio
-                                    </a>
-                                <?php endif; ?>
+                                    
+                                    <?php if ($servicio['ubicacion']): ?>
+                                        <div class="mb-3">
+                                            <small class="text-muted">
+                                                <i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($servicio['ubicacion']); ?>
+                                            </small>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($servicio['fecha_limite']): ?>
+                                        <div class="alert alert-warning mb-3 py-2">
+                                            <small><i class="bi bi-calendar-event"></i> Disponible hasta: <?php echo date('d/m/Y', strtotime($servicio['fecha_limite'])); ?></small>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- ========== MODIFICADO: Botones según tipo ========== -->
+                                    <?php if ($servicio['tipo'] === 'servicio'): ?>
+                                        <!-- SERVICIOS: Van directo a agendar cita -->
+                                        <a href="citas.php?accion=nueva&id_servicio=<?php echo $servicio['id_servicio']; ?>" 
+                                           class="btn btn-servicio w-100">
+                                            <i class="bi bi-calendar-plus"></i> Agendar Cita
+                                        </a>
+                                    <?php else: ?>
+                                        <!-- OFERTAS: Van a solicitud -->
+                                        <a href="nueva_solicitud.php?id_servicio=<?php echo $servicio['id_servicio']; ?>" 
+                                           class="btn btn-oferta w-100">
+                                            <i class="bi bi-file-earmark-plus"></i> Solicitar Beneficio
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>

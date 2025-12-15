@@ -27,6 +27,12 @@ $servicios = [];
 $error = null;
 $success = null;
 
+// ========== MODIFICACIÓN 1: Capturar servicio preseleccionado ==========
+$id_servicio_preseleccionado = isset($_GET['id_servicio']) && is_numeric($_GET['id_servicio']) 
+    ? (int)$_GET['id_servicio'] 
+    : null;
+
+
 try {
     $conn = getDBConnection();
     
@@ -34,10 +40,12 @@ try {
     $stmt_tipos = $conn->query("SELECT * FROM tipos_solicitud WHERE activo = 1 ORDER BY nombre_tipo");
     $tipos_solicitud = $stmt_tipos->fetchAll();
     
-    // Obtener servicios activos
+    // ========== MODIFICACIÓN 2: Cambiar query para obtener solo OFERTAS ==========
+    // Obtener servicios activos (solo OFERTAS)
     $stmt_servicios = $conn->query("
         SELECT * FROM servicios_ofertas 
-        WHERE activo = 1 AND tipo = 'servicio'
+        WHERE activo = 1 
+        AND tipo = 'oferta'
         ORDER BY nombre
     ");
     $servicios = $stmt_servicios->fetchAll();
@@ -272,18 +280,27 @@ ob_start();
             <div class="form-text">Seleccione el tipo de solicitud que desea realizar.</div>
         </div>
         
-        <!-- Servicio Relacionado (Opcional) -->
+        <!-- ========== MODIFICACIÓN 3: Servicio Relacionado con preselección ========== -->
         <div class="mb-4">
-            <label for="id_servicio" class="form-label">Servicio Relacionado (Opcional)</label>
+            <label for="id_servicio" class="form-label">Oferta/Beneficio Relacionado</label>
             <select class="form-select" id="id_servicio" name="id_servicio">
-                <option value="">No relacionar con un servicio específico</option>
+                <option value="">Seleccione una oferta (opcional)</option>
                 <?php foreach ($servicios as $servicio): ?>
-                    <option value="<?php echo $servicio['id_servicio']; ?>">
+                    <option value="<?php echo $servicio['id_servicio']; ?>"
+                            <?php echo ($id_servicio_preseleccionado == $servicio['id_servicio']) ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($servicio['nombre']); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <div class="form-text">Si su solicitud está relacionada con un servicio específico, selecciónelo aquí.</div>
+            <?php if ($id_servicio_preseleccionado): ?>
+                <small class="text-success d-block mt-1">
+                    <i class="bi bi-check-circle-fill"></i> Oferta preseleccionada desde el catálogo
+                </small>
+            <?php endif; ?>
+            <div class="form-text">
+                Seleccione la oferta o beneficio que desea solicitar. 
+                Solo aparecen ofertas que requieren solicitud formal.
+            </div>
         </div>
         
         <!-- Motivo -->

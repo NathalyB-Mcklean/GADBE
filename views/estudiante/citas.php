@@ -34,14 +34,21 @@ $trabajadoras_sociales = [];
 try {
     $conn = getDBConnection();
     
+    // Capturar el servicio preseleccionado desde la URL
+    $id_servicio_preseleccionado = isset($_GET['id_servicio']) && is_numeric($_GET['id_servicio']) 
+        ? (int)$_GET['id_servicio'] 
+        : null;
+    
     // Verificar si se está creando una nueva cita
     if (isset($_GET['accion']) && $_GET['accion'] === 'nueva') {
         $mostrar_formulario = true;
         
-        // Obtener servicios disponibles para citas
+        // Obtener servicios disponibles para citas (solo tipo='servicio')
         $stmt_servicios = $conn->query("
             SELECT * FROM servicios_ofertas 
-            WHERE activo = 1 AND requiere_cita = 1
+            WHERE activo = 1 
+            AND tipo = 'servicio'
+            AND requiere_cita = 1
             ORDER BY nombre
         ");
         $servicios_disponibles = $stmt_servicios->fetchAll();
@@ -301,23 +308,31 @@ ob_start();
     <?php endif; ?>
 </div>
 
+
+
+
 <?php if ($mostrar_formulario): ?>
     <!-- Formulario para nueva cita -->
     <div class="content-card">
         <h3 class="mb-4">Programar Nueva Cita</h3>
         <form method="POST" action="">
             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="id_servicio" class="form-label required">Servicio</label>
-                    <select class="form-select" id="id_servicio" name="id_servicio" required>
-                        <option value="">Seleccione un servicio</option>
-                        <?php foreach ($servicios_disponibles as $servicio): ?>
-                            <option value="<?php echo $servicio['id_servicio']; ?>">
-                                <?php echo htmlspecialchars($servicio['nombre']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+
+<div class="col-md-6 mb-3">
+    <label for="id_servicio" class="form-label required">Servicio</label>
+    <select class="form-select" id="id_servicio" name="id_servicio" required>
+        <option value="">Seleccione un servicio</option>
+        <?php foreach ($servicios_disponibles as $servicio): ?>
+            <option value="<?php echo $servicio['id_servicio']; ?>"
+                    <?php echo ($id_servicio_preseleccionado == $servicio['id_servicio']) ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars($servicio['nombre']); ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <?php if ($id_servicio_preseleccionado): ?>
+        <small class="text-muted">Servicio preseleccionado desde el catálogo</small>
+    <?php endif; ?>
+</div>
                 
                 <div class="col-md-6 mb-3">
                     <label for="id_trabajadora_social" class="form-label required">Trabajadora Social</label>

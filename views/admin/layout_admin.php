@@ -371,7 +371,7 @@ try {
                 <i class="bi bi-person-circle"></i> Mi Perfil
             </a>
             
-            <a class="nav-link" href="../../auth/logout.php" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 20px;">
+            <a class="nav-link" href="../auth/logout.php" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 20px;">
                 <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
             </a>
         </nav>
