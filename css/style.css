@@ -1,0 +1,269 @@
+/* Estilos para Login y Registro - Sistema UTP */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: 
+        linear-gradient(135deg, rgba(107, 44, 145, 0.85) 0%, rgba(26, 71, 42, 0.85) 100%),
+        url('../../images/campus.jpg') center/cover no-repeat;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(107, 44, 145, 0.7) 0%, rgba(26, 71, 42, 0.7) 100%);
+    z-index: 0;
+}
+
+.auth-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* Contenedor principal */
+.auth-container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 450px;
+    width: 100%;
+    padding: 40px;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Encabezado */
+h2 {
+    color: #6B2C91;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 14px;
+}
+
+/* Logo UTP (opcional) */
+.logo-container {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.logo-utp {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #6B2C91, #2d8659);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+}
+
+/* Mensajes */
+.error, .success {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    animation: fadeIn 0.3s ease;
+}
+
+.error {
+    background-color: #fee;
+    border-left: 4px solid #c33;
+    color: #c33;
+}
+
+.success {
+    background-color: #e8f5e9;
+    border-left: 4px solid #2d8659;
+    color: #1b5e20;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Formulario */
+form {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background-color: #fafafa;
+    margin-bottom: 20px;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+    outline: none;
+    border-color: #6B2C91;
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(107, 44, 145, 0.1);
+}
+
+input::placeholder {
+    color: #aaa;
+}
+
+/* Contenedor para campos lado a lado */
+.password-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.password-field {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Responsive: en móviles una columna */
+@media (max-width: 768px) {
+    .password-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Botón principal */
+button[type="submit"] {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #6B2C91 0%, #8e44ad 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(107, 44, 145, 0.3);
+}
+
+button[type="submit"]:hover {
+    background: linear-gradient(135deg, #8e44ad 0%, #6B2C91 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(107, 44, 145, 0.4);
+}
+
+button[type="submit"]:active {
+    transform: translateY(0);
+}
+
+/* Links */
+p {
+    text-align: center;
+    margin-top: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+a {
+    color: #2d8659;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #1a472a;
+    text-decoration: underline;
+}
+
+/* Divisor */
+hr {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 30px 0 20px 0;
+}
+
+/* Footer */
+.footer-text {
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+    margin-top: 15px;
+}
+
+/* Indicador de contraseña segura (opcional) */
+.password-strength {
+    height: 4px;
+    border-radius: 2px;
+    margin-top: -15px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.strength-weak { background-color: #f44336; }
+.strength-medium { background-color: #ff9800; }
+.strength-strong { background-color: #2d8659; }
+
+/* Responsive */
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 30px 25px;
+    }
+    
+    h2 {
+        font-size: 24px;
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+        padding: 12px 14px;
+    }
+}
