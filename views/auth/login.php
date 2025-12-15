@@ -18,7 +18,7 @@ session_start();
 if (isset($_SESSION['user_id'])) {
     switch ($_SESSION['user_role']) {
         case 'Administrador':
-            header("Location: ../admin/dashboard.php");
+            header("Location: ../admin/dashboard_admin.php");
             break;
         case 'Trabajadora Social':
             header("Location: ../tsocial/dashboard_trabajadora.php");
