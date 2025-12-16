@@ -15,20 +15,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+          fetch-depth: 0
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          coverage: xdebug  # Habilitar Xdebug para cobertura
+          coverage: xdebug
           extensions: mbstring, xml, ctype, json
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress --no-suggest
 
       - name: Run PHPUnit tests with coverage
-        run: ./vendor/bin/phpunit --coverage-clover coverage.xml
+        run: php vendor/bin/phpunit --coverage-clover coverage.xml
 
       - name: List generated files (debug)
         run: ls -la
