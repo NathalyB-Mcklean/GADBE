@@ -151,12 +151,7 @@ ob_start();
             <div class="stats-label">Estudiantes Atendidos</div>
         </div>
     </div>
-    <div class="col-md-2 col-6">
-        <div class="stats-card orange">
-            <div class="stats-value">$<?php echo number_format($estadisticas['beneficios_activos'] ?? 0, 2); ?></div>
-            <div class="stats-label">Beneficios Activos</div>
-        </div>
-    </div>
+
     <div class="col-md-2 col-6">
         <div class="stats-card teal">
             <div class="stats-value"><?php echo round($estadisticas['tiempo_respuesta_promedio'] ?? 0, 1); ?>d</div>
