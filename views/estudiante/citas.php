@@ -30,6 +30,7 @@ $success = null;
 $mostrar_formulario = false;
 $servicios_disponibles = [];
 $trabajadoras_sociales = [];
+$cita_data = null; // Para almacenar datos de la cita a editar
 
 try {
     $conn = getDBConnection();
@@ -62,6 +63,51 @@ try {
             ORDER BY u.nombre_completo
         ");
         $trabajadoras_sociales = $stmt_ts->fetchAll();
+    }
+    
+    // Procesar edición de cita
+    if (isset($_GET['editar']) && is_numeric($_GET['editar'])) {
+        $id_cita = $_GET['editar'];
+        $mostrar_formulario = true;
+        
+        // Verificar que la cita pertenezca al estudiante y sea editable
+        $stmt_check = $conn->prepare("
+            SELECT c.* FROM citas c
+            WHERE c.id_cita = ? 
+            AND c.id_estudiante = ?
+            AND c.estado IN ('confirmada', 'pendiente_confirmacion')
+            AND c.fecha_cita >= CURDATE()
+        ");
+        $stmt_check->execute([$id_cita, $_SESSION['user_id']]);
+        $cita_editar = $stmt_check->fetch();
+        
+        if (!$cita_editar) {
+            $error = "No se puede editar esta cita";
+            $mostrar_formulario = false;
+        } else {
+            // Cargar datos de la cita para edición
+            $cita_data = $cita_editar;
+            
+            // Obtener servicios disponibles
+            $stmt_servicios = $conn->query("
+                SELECT * FROM servicios_ofertas 
+                WHERE activo = 1 
+                AND tipo = 'servicio'
+                AND requiere_cita = 1
+                ORDER BY nombre
+            ");
+            $servicios_disponibles = $stmt_servicios->fetchAll();
+            
+            // Obtener trabajadoras sociales
+            $stmt_ts = $conn->query("
+                SELECT u.* FROM usuarios u
+                INNER JOIN roles r ON u.id_rol = r.id_rol
+                WHERE r.nombre_rol IN ('Trabajadora Social', 'Coordinador')
+                AND u.activo = 1
+                ORDER BY u.nombre_completo
+            ");
+            $trabajadoras_sociales = $stmt_ts->fetchAll();
+        }
     }
     
     // Procesar cancelación de cita
@@ -161,6 +207,106 @@ try {
         ]);
         
         $success = "Cita programada exitosamente con el código: $codigo_cita";
+        $mostrar_formulario = false;
+    }
+    
+    // Procesar actualización de cita
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_cita'])) {
+        $id_cita = $_POST['id_cita'] ?? '';
+        $id_trabajadora_social = $_POST['id_trabajadora_social'] ?? '';
+        $fecha_cita = $_POST['fecha_cita'] ?? '';
+        $hora_cita = $_POST['hora_cita'] ?? '';
+        $notas = trim($_POST['notas'] ?? '');
+        
+        // Validaciones
+        if (empty($id_cita) || empty($id_trabajadora_social) || empty($fecha_cita) || empty($hora_cita)) {
+            throw new Exception("Todos los campos obligatorios deben ser completados");
+        }
+        
+        // Verificar que la fecha sea futura
+        if (strtotime($fecha_cita) < strtotime(date('Y-m-d'))) {
+            throw new Exception("No se pueden programar citas en fechas pasadas");
+        }
+        
+        // Verificar que la cita pertenezca al estudiante
+        $stmt_check_owner = $conn->prepare("
+            SELECT id_cita FROM citas 
+            WHERE id_cita = ? AND id_estudiante = ?
+        ");
+        $stmt_check_owner->execute([$id_cita, $_SESSION['user_id']]);
+        $cita_owner = $stmt_check_owner->fetch();
+        
+        if (!$cita_owner) {
+            throw new Exception("No tiene permisos para editar esta cita");
+        }
+        
+        // Verificar disponibilidad (excluyendo la cita actual)
+        $stmt_check = $conn->prepare("
+            SELECT COUNT(*) as count FROM citas 
+            WHERE id_trabajadora_social = ? 
+            AND fecha_cita = ? 
+            AND hora_inicio = ?
+            AND id_cita != ?
+            AND estado NOT IN ('cancelada', 'completada')
+        ");
+        $stmt_check->execute([$id_trabajadora_social, $fecha_cita, $hora_cita, $id_cita]);
+        $disponibilidad = $stmt_check->fetch();
+        
+        if ($disponibilidad['count'] > 0) {
+            throw new Exception("El horario seleccionado no está disponible. Por favor, elija otro horario.");
+        }
+        
+        // Calcular hora de fin (1 hora por defecto)
+        $hora_fin = date('H:i:s', strtotime($hora_cita) + 3600);
+        
+        // Actualizar cita
+        $stmt_update = $conn->prepare("
+            UPDATE citas SET
+                id_trabajadora_social = ?,
+                fecha_cita = ?,
+                hora_inicio = ?,
+                hora_fin = ?,
+                notas_estudiante = ?,
+                fecha_modificacion = NOW(),
+                estado = 'confirmada'
+            WHERE id_cita = ?
+        ");
+        
+        $stmt_update->execute([
+            $id_trabajadora_social,
+            $fecha_cita,
+            $hora_cita,
+            $hora_fin,
+            $notas,
+            $id_cita
+        ]);
+        
+        // Registrar en historial
+        $stmt_historial = $conn->prepare("
+            INSERT INTO historial_citas (
+                id_cita, id_usuario, accion, fecha_anterior, hora_anterior,
+                fecha_nueva, hora_nueva, comentarios, fecha_cambio
+            ) VALUES (?, ?, 'edicion', ?, ?, ?, ?, ?, NOW())
+        ");
+        
+        // Obtener datos anteriores de la cita
+        $stmt_anterior = $conn->prepare("
+            SELECT fecha_cita, hora_inicio FROM citas WHERE id_cita = ?
+        ");
+        $stmt_anterior->execute([$id_cita]);
+        $cita_anterior = $stmt_anterior->fetch();
+        
+        $stmt_historial->execute([
+            $id_cita,
+            $_SESSION['user_id'],
+            $cita_anterior['fecha_cita'],
+            $cita_anterior['hora_inicio'],
+            $fecha_cita,
+            $hora_cita,
+            "Cita editada por el estudiante"
+        ]);
+        
+        $success = "Cita actualizada exitosamente";
         $mostrar_formulario = false;
     }
     
@@ -267,6 +413,23 @@ ob_start();
         color: white;
     }
     
+    .btn-editar {
+        background-color: #0dcaf0;
+        border-color: #0dcaf0;
+        color: white;
+    }
+    
+    .btn-editar:hover {
+        background-color: #31d2f2;
+        border-color: #31d2f2;
+        color: white;
+    }
+    
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    
     .empty-state {
         text-align: center;
         padding: 40px 20px;
@@ -277,6 +440,11 @@ ob_start();
         font-size: 48px;
         margin-bottom: 20px;
         opacity: 0.5;
+    }
+    
+    .required:after {
+        content: " *";
+        color: #dc3545;
     }
 </style>
 
@@ -308,38 +476,55 @@ ob_start();
     <?php endif; ?>
 </div>
 
-
-
-
 <?php if ($mostrar_formulario): ?>
-    <!-- Formulario para nueva cita -->
+    <!-- Formulario para nueva/editar cita -->
     <div class="content-card">
-        <h3 class="mb-4">Programar Nueva Cita</h3>
+        <h3 class="mb-4">
+            <?php echo isset($cita_data) ? 'Editar Cita' : 'Programar Nueva Cita'; ?>
+        </h3>
         <form method="POST" action="">
+            <input type="hidden" name="id_cita" value="<?php echo isset($cita_data) ? $cita_data['id_cita'] : ''; ?>">
+            
             <div class="row">
-
-<div class="col-md-6 mb-3">
-    <label for="id_servicio" class="form-label required">Servicio</label>
-    <select class="form-select" id="id_servicio" name="id_servicio" required>
-        <option value="">Seleccione un servicio</option>
-        <?php foreach ($servicios_disponibles as $servicio): ?>
-            <option value="<?php echo $servicio['id_servicio']; ?>"
-                    <?php echo ($id_servicio_preseleccionado == $servicio['id_servicio']) ? 'selected' : ''; ?>>
-                <?php echo htmlspecialchars($servicio['nombre']); ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-    <?php if ($id_servicio_preseleccionado): ?>
-        <small class="text-muted">Servicio preseleccionado desde el catálogo</small>
-    <?php endif; ?>
-</div>
+                <div class="col-md-6 mb-3">
+                    <label for="id_servicio" class="form-label required">Servicio</label>
+                    <select class="form-select" id="id_servicio" name="id_servicio" required
+                        <?php echo isset($cita_data) ? 'disabled' : ''; ?>>
+                        <option value="">Seleccione un servicio</option>
+                        <?php foreach ($servicios_disponibles as $servicio): ?>
+                            <?php 
+                            $selected = '';
+                            if (isset($cita_data) && $cita_data['id_servicio'] == $servicio['id_servicio']) {
+                                $selected = 'selected';
+                            } elseif ($id_servicio_preseleccionado == $servicio['id_servicio']) {
+                                $selected = 'selected';
+                            }
+                            ?>
+                            <option value="<?php echo $servicio['id_servicio']; ?>" <?php echo $selected; ?>>
+                                <?php echo htmlspecialchars($servicio['nombre']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (isset($cita_data)): ?>
+                        <small class="text-muted">El servicio no se puede cambiar al editar la cita</small>
+                    <?php endif; ?>
+                    <?php if ($id_servicio_preseleccionado): ?>
+                        <small class="text-muted">Servicio preseleccionado desde el catálogo</small>
+                    <?php endif; ?>
+                </div>
                 
                 <div class="col-md-6 mb-3">
                     <label for="id_trabajadora_social" class="form-label required">Trabajadora Social</label>
                     <select class="form-select" id="id_trabajadora_social" name="id_trabajadora_social" required>
                         <option value="">Seleccione una trabajadora social</option>
                         <?php foreach ($trabajadoras_sociales as $ts): ?>
-                            <option value="<?php echo $ts['id_usuario']; ?>">
+                            <?php 
+                            $selected = '';
+                            if (isset($cita_data) && $cita_data['id_trabajadora_social'] == $ts['id_usuario']) {
+                                $selected = 'selected';
+                            }
+                            ?>
+                            <option value="<?php echo $ts['id_usuario']; ?>" <?php echo $selected; ?>>
                                 <?php echo htmlspecialchars($ts['nombre_completo']); ?>
                             </option>
                         <?php endforeach; ?>
@@ -351,6 +536,7 @@ ob_start();
                 <div class="col-md-6 mb-3">
                     <label for="fecha_cita" class="form-label required">Fecha</label>
                     <input type="date" class="form-control" id="fecha_cita" name="fecha_cita" 
+                           value="<?php echo isset($cita_data) ? $cita_data['fecha_cita'] : ''; ?>"
                            min="<?php echo date('Y-m-d'); ?>" required>
                 </div>
                 
@@ -360,8 +546,16 @@ ob_start();
                         <option value="">Seleccione una hora</option>
                         <?php for ($h = 8; $h <= 16; $h++): ?>
                             <?php for ($m = 0; $m < 60; $m += 30): ?>
-                                <?php $hora = str_pad($h, 2, '0', STR_PAD_LEFT) . ':' . str_pad($m, 2, '0', STR_PAD_LEFT); ?>
-                                <option value="<?php echo $hora; ?>"><?php echo $hora; ?></option>
+                                <?php 
+                                $hora = str_pad($h, 2, '0', STR_PAD_LEFT) . ':' . str_pad($m, 2, '0', STR_PAD_LEFT);
+                                $selected = '';
+                                if (isset($cita_data) && date('H:i', strtotime($cita_data['hora_inicio'])) == $hora) {
+                                    $selected = 'selected';
+                                }
+                                ?>
+                                <option value="<?php echo $hora; ?>" <?php echo $selected; ?>>
+                                    <?php echo $hora; ?>
+                                </option>
                             <?php endfor; ?>
                         <?php endfor; ?>
                     </select>
@@ -371,13 +565,17 @@ ob_start();
             <div class="mb-4">
                 <label for="notas" class="form-label">Notas (Opcional)</label>
                 <textarea class="form-control" id="notas" name="notas" rows="3"
-                          placeholder="Notas adicionales para la cita..."></textarea>
+                          placeholder="Notas adicionales para la cita..."><?php 
+                          echo isset($cita_data) ? htmlspecialchars($cita_data['notas_estudiante']) : ''; 
+                          ?></textarea>
             </div>
             
             <div class="d-flex justify-content-between">
                 <a href="citas.php" class="btn btn-outline-secondary">Cancelar</a>
-                <button type="submit" name="crear_cita" class="btn btn-utp">
-                    <i class="bi bi-calendar-check"></i> Programar Cita
+                <button type="submit" name="<?php echo isset($cita_data) ? 'actualizar_cita' : 'crear_cita'; ?>" 
+                        class="btn btn-utp">
+                    <i class="bi bi-calendar-check"></i> 
+                    <?php echo isset($cita_data) ? 'Actualizar Cita' : 'Programar Cita'; ?>
                 </button>
             </div>
         </form>
@@ -418,13 +616,17 @@ ob_start();
                             </span>
                             <div class="mt-2">
                                 <?php if ($cita['estado'] === 'confirmada' || $cita['estado'] === 'pendiente_confirmacion'): ?>
+                                    <a href="?editar=<?php echo $cita['id_cita']; ?>" 
+                                       class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
                                     <a href="?cancelar=<?php echo $cita['id_cita']; ?>" 
                                        class="btn btn-sm btn-outline-danger"
                                        onclick="return confirm('¿Está seguro de que desea cancelar esta cita?')">
                                         <i class="bi bi-x-circle"></i> Cancelar
                                     </a>
                                 <?php endif; ?>
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -485,6 +687,15 @@ ob_start();
 <script>
     // Establecer la fecha mínima como hoy
     document.getElementById('fecha_cita')?.min = new Date().toISOString().split('T')[0];
+    
+    // Auto-cerrar alertas después de 5 segundos
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
 </script>
 
 <?php
