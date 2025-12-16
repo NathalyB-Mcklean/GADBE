@@ -1,0 +1,22 @@
+{
+    "name": "utp/gadbe",
+    "description": "Sistema de Gestión Automatizada para la Dirección de Bienestar Estudiantil - UTP",
+    "type": "project",
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "files": [
+            "validaciones/validaciones.php",
+            "config/config.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    }
+}

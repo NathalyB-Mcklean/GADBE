@@ -1,0 +1,50 @@
+name: SonarCloud Scan con Cobertura
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Análisis y Pruebas
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: xdebug  # Habilitar Xdebug para cobertura
+          extensions: mbstring, xml, ctype, json
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Run PHPUnit tests with coverage
+        run: ./vendor/bin/phpunit --coverage-clover coverage.xml
+
+      - name: List generated files (debug)
+        run: ls -la
+
+      - name: Check coverage file
+        run: |
+          if [ -f coverage.xml ]; then
+            echo "✅ coverage.xml generado correctamente"
+            head -20 coverage.xml
+          else
+            echo "❌ ERROR: coverage.xml no se generó"
+            exit 1
+          fi
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
