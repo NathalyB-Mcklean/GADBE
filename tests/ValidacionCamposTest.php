@@ -3,6 +3,9 @@ namespace Tests;
 
 use PHPUnit\Framework\TestCase;
 
+// Cargar las funciones de validación
+require_once __DIR__ . '/../validaciones/validaciones.php';
+
 /**
  * Tests para validación de campos obligatorios
  */

@@ -3,6 +3,9 @@ namespace Tests;
 
 use PHPUnit\Framework\TestCase;
 
+// Cargar las funciones de validación
+require_once __DIR__ . '/../validaciones/validaciones.php';
+
 /**
  * Tests para validaciones de correos UTP
  */
@@ -18,7 +21,7 @@ class ValidacionCorreoTest extends TestCase
         try {
             $resultado = validarCorreoUTP($correo);
             $this->assertEquals('estudiante.prueba@utp.ac.pa', $resultado);
-            $this->assertTrue(true); // Test pasó
+            $this->assertTrue(true);
         } catch (\Exception $e) {
             $this->fail('No debería lanzar excepción con correo válido: ' . $e->getMessage());
         }
