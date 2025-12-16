@@ -235,18 +235,7 @@ ob_start();
         </div>
     </div>
     
-    <div class="col-md-3 col-6">
-        <div class="stats-card green">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="stats-label">Beneficios Activos</div>
-                    <div class="stats-value">$<?php echo number_format($estadisticas['total_beneficios'] ?? 0, 0); ?></div>
-                    <div class="stats-desc">Monto mensual</div>
-                </div>
-                <i class="bi bi-cash-coin stats-icon"></i>
-            </div>
-        </div>
-    </div>
+
     
     <div class="col-md-3 col-6">
         <div class="stats-card purple">
