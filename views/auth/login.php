@@ -534,10 +534,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
     <div class="auth-container">
-        <div class="security-badge">
-            🔒 Sistema Seguro con Protección Anti-Intrusos
-        </div>
-        
         <div class="logo-container">
             <img src="../../images/utp.png" alt="Logo UTP" class="logo-utp" 
                  onerror="this.style.display='none'">
@@ -602,23 +598,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </button>
         </form>
         
-        <div class="security-info">
-            <h4>🛡️ Información de Seguridad</h4>
-            <ul>
-                <li>✅ Tienes un máximo de <strong>5 intentos</strong> para ingresar tu contraseña</li>
-                <li>⏱️ Después de 5 intentos fallidos, tu cuenta será bloqueada por <strong>30 minutos</strong></li>
-                <li>🔄 Los intentos se resetean automáticamente después del bloqueo</li>
-                <li>✨ Un login exitoso limpia todos los intentos fallidos previos</li>
-            </ul>
-        </div>
-        
-        <?php if (!empty($debug_info)): ?>
-        <div class="debug-box">
-            <h4>📊 Información de Debug:</h4>
-            <?php echo $debug_info; ?>
-        </div>
-        <?php endif; ?>
-    </div>
 
     <?php if ($tiempo_bloqueo_restante > 0): ?>
     <script>
