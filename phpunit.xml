@@ -15,11 +15,11 @@
         <include>
             <directory suffix=".php">validaciones</directory>
             <directory suffix=".php">config</directory>
-            <directory suffix=".php">views</directory>
         </include>
         <exclude>
             <directory>vendor</directory>
             <directory>tests</directory>
+            <directory>views</directory>
             <directory>uploads</directory>
         </exclude>
         <report>
