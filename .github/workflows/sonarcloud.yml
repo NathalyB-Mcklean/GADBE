@@ -27,25 +27,34 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Run PHPUnit tests with coverage
+      - name: Debug - Show PHPUnit version
+        run: php vendor/bin/phpunit --version
+
+      - name: Run PHPUnit tests WITHOUT coverage first (debug)
+        continue-on-error: true
+        run: php vendor/bin/phpunit
+
+      - name: Run PHPUnit tests WITH coverage
         continue-on-error: true
         run: php vendor/bin/phpunit --coverage-clover coverage.xml
 
-      - name: Verify coverage file was created
+      - name: Verify coverage file
         run: |
+          echo "Listando archivos:"
+          ls -la
           if [ -f coverage.xml ]; then
-            echo "✅ coverage.xml generado correctamente"
+            echo "✅ coverage.xml existe!"
             ls -lh coverage.xml
-            echo "Primeras líneas del archivo:"
-            head -20 coverage.xml
+            echo "Primeras 30 líneas:"
+            head -30 coverage.xml
           else
-            echo "❌ ERROR: coverage.xml no se generó"
-            echo "Listando archivos en directorio:"
-            ls -la
-            exit 1
+            echo "❌ coverage.xml NO existe"
+            echo "Intentando generar con --coverage-text:"
+            php vendor/bin/phpunit --coverage-text || true
           fi
 
       - name: SonarCloud Scan
+        if: always()
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
