@@ -25,21 +25,24 @@ jobs:
           extensions: mbstring, xml, ctype, json
 
       - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer install --prefer-dist --no-progress
 
       - name: Run PHPUnit tests with coverage
-        run: php vendor/bin/phpunit --coverage-clover coverage.xml || true
+        continue-on-error: true
+        run: php vendor/bin/phpunit --coverage-clover coverage.xml
 
-      - name: List generated files (debug)
-        run: ls -la
-
-      - name: Check coverage file
+      - name: Verify coverage file was created
         run: |
           if [ -f coverage.xml ]; then
             echo "✅ coverage.xml generado correctamente"
+            ls -lh coverage.xml
+            echo "Primeras líneas del archivo:"
             head -20 coverage.xml
           else
-            echo "⚠️ WARNING: coverage.xml no se generó, pero continuamos"
+            echo "❌ ERROR: coverage.xml no se generó"
+            echo "Listando archivos en directorio:"
+            ls -la
+            exit 1
           fi
 
       - name: SonarCloud Scan
