@@ -34,7 +34,7 @@ class ConsultasAvanzadasTest extends TestCase
         
         $this->assertGreaterThan(0, count($resultadosEncontrados), 
             'Sistema debe mostrar lista de servicios filtrados');
-        $this->assertContains('Becas', $resultadosEncontrados[0]);
+        $this->assertStringContainsString('Becas', $resultadosEncontrados[0]);
     }
     
     /**
