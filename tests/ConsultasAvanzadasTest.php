@@ -58,7 +58,7 @@ class ConsultasAvanzadasTest extends TestCase
      * CP-CON-06: Caso de prueba fallido - Término con pocos caracteres
      * Validar manejo de término de búsqueda inválido
      */
-    public function testBusquedaFallidaConTerminoDemasiado Corto()
+    public function testBusquedaFallidaConTerminoCorto()
     {
         $termino = 'a';
         
