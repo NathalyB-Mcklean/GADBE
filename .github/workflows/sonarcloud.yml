@@ -28,27 +28,18 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run PHPUnit tests with coverage (PCOV)
-        run: |
-          vendor/bin/phpunit --coverage-clover coverage.xml --coverage-text
-          echo "Exit code: $?"
+        run: php vendor/bin/phpunit --coverage-clover coverage.xml --coverage-text
 
       - name: Verify coverage file exists
         run: |
-          ls -la
           if [ -f coverage.xml ]; then
             echo "✅ coverage.xml generado correctamente"
             ls -lh coverage.xml
-            wc -l coverage.xml
             echo ""
             echo "Primeras 30 líneas:"
             head -30 coverage.xml
           else
-            echo "❌ ERROR CRÍTICO: coverage.xml NO se generó"
-            echo "Contenido del directorio:"
-            ls -la
-            echo "Verificando PHP y extensiones:"
-            php -v
-            php -m | grep -i cov
+            echo "❌ ERROR: coverage.xml NO se generó"
             exit 1
           fi
 
