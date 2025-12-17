@@ -28,6 +28,7 @@ class SistemaBasicoTest extends TestCase
      */
     public function testFormatoCedulaPanamena()
     {
+        // Formato válido: X-XXX-XXXX o X-XXXX-XXXX
         $cedulasValidas = [
             '8-888-8888',
             '1-234-5678',
@@ -75,7 +76,8 @@ class SistemaBasicoTest extends TestCase
         $directoriosRequeridos = [
             __DIR__ . '/../config',
             __DIR__ . '/../validaciones',
-            __DIR__ . '/../views'
+            __DIR__ . '/../views',
+            __DIR__ . '/../uploads'
         ];
         
         foreach ($directoriosRequeridos as $directorio) {
