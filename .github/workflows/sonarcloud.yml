@@ -17,36 +17,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up PHP
+      - name: Set up PHP with PCOV
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          coverage: xdebug
+          coverage: pcov
           extensions: mbstring, xml, ctype, json
-          ini-values: xdebug.mode=coverage
-
-      - name: Verify Xdebug is loaded
-        run: php -v
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Run PHPUnit tests with coverage
-        env:
-          XDEBUG_MODE: coverage
-        run: php vendor/bin/phpunit --coverage-clover coverage.xml --coverage-text
-
-      - name: Verify coverage file
+      - name: Run PHPUnit tests with coverage (PCOV)
         run: |
+          vendor/bin/phpunit --coverage-clover coverage.xml --coverage-text
+          echo "Exit code: $?"
+
+      - name: Verify coverage file exists
+        run: |
+          ls -la
           if [ -f coverage.xml ]; then
             echo "✅ coverage.xml generado correctamente"
             ls -lh coverage.xml
+            wc -l coverage.xml
+            echo ""
             echo "Primeras 30 líneas:"
             head -30 coverage.xml
           else
-            echo "❌ ERROR: coverage.xml NO se generó"
-            echo "Verificando configuración de Xdebug:"
-            php -i | grep xdebug
+            echo "❌ ERROR CRÍTICO: coverage.xml NO se generó"
+            echo "Contenido del directorio:"
+            ls -la
+            echo "Verificando PHP y extensiones:"
+            php -v
+            php -m | grep -i cov
             exit 1
           fi
 
